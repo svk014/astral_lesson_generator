@@ -9,6 +9,9 @@ type LessonRow = {
   status: string;
   temporal_workflow_id: string | null;
   temporal_run_id: string | null;
+  jsx_public_url: string | null;
+  jsx_storage_path: string | null;
+  error_message: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -92,7 +95,7 @@ export async function POST(request: Request) {
 
     const temporalClient = await getTemporalClient();
 
-  const handle = await temporalClient.start(workflowType, {
+    const handle = await temporalClient.start(workflowType, {
       args: [
         {
           lessonId: lesson.id,
@@ -126,7 +129,7 @@ export async function POST(request: Request) {
     if (lesson) {
       await supabase
         .from('lessons')
-        .update({ status: 'error' })
+        .update({ status: 'failed', error_message: 'Failed before workflow start' })
         .eq('id', lesson.id);
     }
 

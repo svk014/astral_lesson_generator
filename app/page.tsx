@@ -1,36 +1,30 @@
 "use client";
+
 import Link from "next/link";
 
-type LessonStatus = "Generating" | "Generated";
+import { useState, useEffect, useCallback } from "react";
 
-interface LessonRow {
-  id: number;
-  title: string;
-  status: LessonStatus;
-  href: string;
-}
-
-// Remove static lessons array
-
-const statusStyles: Record<LessonStatus, string> = {
-  Generated:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200",
-  Generating:
-    "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200",
+const statusStyles: Record<string, string> = {
+  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200",
+  running: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200",
+  failed: "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-200",
+  queued: "bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-200",
 };
 
-const statusDotStyles: Record<LessonStatus, string> = {
-  Generated: "bg-emerald-500",
-  Generating: "bg-amber-500",
+const statusDotStyles: Record<string, string> = {
+  completed: "bg-emerald-500",
+  running: "bg-amber-500",
+  failed: "bg-red-500",
+  queued: "bg-slate-500",
 };
-
-import { useState, useEffect } from "react";
 
 type LessonApiRow = {
   id: string;
   outline: string;
   status: string;
   created_at: string;
+  jsx_public_url: string | null;
+  error_message: string | null;
 };
 
 export default function Home() {
@@ -41,16 +35,18 @@ export default function Home() {
   const [outline, setOutline] = useState("");
   const limit = 10;
 
-  const fetchLessons = async (pageNum = page) => {
+  const fetchLessons = useCallback(async (pageNum: number) => {
     const res = await fetch(`/api/lessons?limit=${limit}&offset=${pageNum * limit}`);
     const data = await res.json();
     setLessons(data.lessons || []);
     setTotal(data.total || 0);
-  };
+  }, [limit]);
 
   useEffect(() => {
-    fetchLessons();
-  }, [page]);
+    fetchLessons(page).catch((error) => {
+      console.error("Failed to load lessons", error);
+    });
+  }, [page, fetchLessons]);
 
   return (
     <main className="min-h-screen bg-background">
@@ -137,18 +133,25 @@ export default function Home() {
                 {lessons.map((lesson) => (
                   <tr key={lesson.id} className="transition hover:bg-muted/50">
                     <td className="px-4 py-3">
-                      <span
-                        className="font-medium text-primary max-w-[320px] truncate block cursor-pointer"
+                      <Link
+                        href={`/lessons/${lesson.id}`}
+                        className="font-medium text-primary hover:underline"
                         title={lesson.outline}
                       >
-                        {lesson.outline.length > 80
-                          ? lesson.outline.slice(0, 77) + '...'
-                          : lesson.outline}
-                      </span>
+                        <span className="max-w-[320px] truncate block">
+                          {lesson.outline.length > 80
+                            ? `${lesson.outline.slice(0, 77)}...`
+                            : lesson.outline}
+                        </span>
+                      </Link>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${lesson.status === 'completed' ? statusStyles.Generated : statusStyles.Generating}`}>
-                        <span className={`h-2 w-2 rounded-full ${lesson.status === 'completed' ? statusDotStyles.Generated : statusDotStyles.Generating}`} />
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusStyles[lesson.status] ?? statusStyles.running}`}
+                      >
+                        <span
+                          className={`h-2 w-2 rounded-full ${statusDotStyles[lesson.status] ?? statusDotStyles.running}`}
+                        />
                         {lesson.status}
                       </span>
                     </td>

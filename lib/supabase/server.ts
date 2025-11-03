@@ -1,34 +1,30 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-/**
- * Especially important if using Fluid compute: Don't put this client in a
- * global variable. Always create a new client within each function when using
- * it.
- */
-export async function createClient() {
-  const cookieStore = await cookies();
+function requireEnv(name: string, value: string | undefined) {
+	if (!value) {
+		throw new Error(`${name} is required`);
+	}
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-      },
-    },
-  );
+	return value;
+}
+
+const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL);
+const serviceRoleKey = requireEnv(
+	'SUPABASE_SERVICE_ROLE_KEY (or NEXT_PRIVATE_SUPABASE_SECRET_KEY)',
+	process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY,
+);
+
+let cachedClient: SupabaseClient | null = null;
+
+export function getServiceSupabaseClient() {
+	if (!cachedClient) {
+		cachedClient = createClient(supabaseUrl, serviceRoleKey, {
+			auth: {
+				autoRefreshToken: false,
+				persistSession: false,
+			},
+		});
+	}
+
+	return cachedClient;
 }

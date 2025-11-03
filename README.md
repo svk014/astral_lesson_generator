@@ -1,109 +1,113 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+<h1 align="center">Astral Lesson Generator</h1>
 
 <p align="center">
- The fastest way to build apps with Next.js and Supabase
+Minimal Next.js app that stores lesson outlines in Supabase and triggers Temporal workflows.
 </p>
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+## Overview
 
-## Features
+This project replaces the original Supabase starter kit with a focused workflow:
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Middleware
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+- Accept lesson outlines from a simple UI (`app/page.tsx`).
+- Persist each outline to a Supabase `lessons` table.
+- Kick off a Temporal workflow that turns the outline into a fully generated lesson.
 
-## Demo
+The backend work is handled via Next.js Route Handlers, Supabase server clients, and the Temporal JavaScript SDK.
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+## Tech Stack
 
-## Deploy to Vercel
+- [Next.js 15 App Router](https://nextjs.org/docs/app)
+- [Bun](https://bun.sh/) for package management and scripts
+- [Supabase](https://supabase.com/) for persistence
+- [Temporal](https://temporal.io/) for background workflow execution
+- [Tailwind CSS](https://tailwindcss.com/) for styling
 
-Vercel deployment will guide you through creating a Supabase account and project.
+## Prerequisites
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+- Node.js ≥ 18 (Bun bundles one, but Temporal tooling expects modern runtimes)
+- [Bun](https://bun.sh/docs/installation)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (for migrations)
+- Access to a Temporal Cloud/Dev server and API credentials
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+## Getting Started
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
-
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
-
-## Clone and run locally
-
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
-
-2. Create a Next.js app using the Supabase Starter template npx command
+1. Install dependencies:
 
    ```bash
-   npx create-next-app --example with-supabase with-supabase-app
+   bun install
    ```
+
+2. Copy `.env.example` to `.env.local` and populate the required Supabase and Temporal values (see [Environment](#environment)).
+
+3. Run database migrations locally or against your remote project (see [Database migrations](#database-migrations)).
+
+4. Start the dev server:
 
    ```bash
-   yarn create next-app --example with-supabase with-supabase-app
+   bun run dev
    ```
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+   The app is available at [http://localhost:3000](http://localhost:3000).
 
-3. Use `cd` to change into the app's directory
+## Environment
 
-   ```bash
-   cd with-supabase-app
-   ```
+Environment variables are documented in `.env.example`. At a minimum you'll need:
 
-4. Rename `.env.example` to `.env.local` and update the following:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (used by server code for inserts)
+- Temporal connection details (namespace, address, API key)
 
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+Update `.env.local` locally and configure the same values wherever you deploy.
 
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+## Database migrations
 
-5. You can now run the Next.js local development server:
+Migrations live in `supabase/migrations`. The project currently defines a `lessons` table with automatic `updated_at` tracking.
 
-   ```bash
-   npm run dev
-   ```
+### Creating a migration
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+```bash
+supabase migration new <name>
+```
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+This creates a timestamped SQL file under `supabase/migrations`. Write raw SQL that reflects the desired schema changes.
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+### Applying migrations
 
-## Feedback and issues
+```bash
+supabase db push
+```
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+`db push` will apply any pending migrations to the connected Supabase project. If you're targeting a local Supabase stack, ensure it's running before executing the command.
 
-## More Supabase examples
+### Checking status
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+```bash
+supabase status
+```
+
+This command reports which migrations have been applied and which are pending.
+
+> **Tip:** Commit each new migration alongside the changes that depend on it so deployments stay in sync.
+
+## Scripts
+
+Common scripts defined in `package.json`:
+
+- `bun run dev` – Start the Next.js dev server
+- `bun run build` – Build the production bundle
+- `bun run lint` – Run ESLint checks
+
+## Testing the Integration
+
+- Submit an outline from the homepage form.
+- Inspect the `lessons` table in Supabase to confirm the insert.
+- Validate that the Temporal workflow was scheduled (via Temporal UI or CLI).
+
+## Project Roadmap
+
+- [x] Supabase `lessons` table migration
+- [ ] API route to create a lesson and trigger Temporal
+- [ ] UI wiring to call the API and reflect workflow status
+
+Contributions and PRs are welcome once the foundational workflow is complete.

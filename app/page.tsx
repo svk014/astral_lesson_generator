@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 
 type LessonStatus = "Generating" | "Generated";
@@ -9,26 +10,7 @@ interface LessonRow {
   href: string;
 }
 
-const lessons: LessonRow[] = [
-  {
-    id: 1,
-    title: "Introduction to the Solar System",
-    status: "Generated",
-    href: "#lesson-1",
-  },
-  {
-    id: 2,
-    title: "Phases of the Moon",
-    status: "Generating",
-    href: "#lesson-2",
-  },
-  {
-    id: 3,
-    title: "Life Cycle of Stars",
-    status: "Generated",
-    href: "#lesson-3",
-  },
-];
+// Remove static lessons array
 
 const statusStyles: Record<LessonStatus, string> = {
   Generated:
@@ -42,7 +24,34 @@ const statusDotStyles: Record<LessonStatus, string> = {
   Generating: "bg-amber-500",
 };
 
+import { useState, useEffect } from "react";
+
+type LessonApiRow = {
+  id: string;
+  outline: string;
+  status: string;
+  created_at: string;
+};
+
 export default function Home() {
+  const [lessons, setLessons] = useState<LessonApiRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [outline, setOutline] = useState("");
+  const limit = 10;
+
+  const fetchLessons = async (pageNum = page) => {
+    const res = await fetch(`/api/lessons?limit=${limit}&offset=${pageNum * limit}`);
+    const data = await res.json();
+    setLessons(data.lessons || []);
+    setTotal(data.total || 0);
+  };
+
+  useEffect(() => {
+    fetchLessons();
+  }, [page]);
+
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 px-6 py-12">
@@ -56,7 +65,26 @@ export default function Home() {
         </header>
 
         <section>
-          <form className="flex flex-col gap-4 rounded-lg border bg-card p-6 shadow-sm">
+          <form
+            className="flex flex-col gap-4 rounded-lg border bg-card p-6 shadow-sm"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!outline.trim()) return;
+              setLoading(true);
+              try {
+                await fetch("/api/lessons", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ outline }),
+                });
+                setOutline("");
+                setPage(0);
+                await fetchLessons(0);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
             <div className="space-y-2">
               <label htmlFor="lesson-outline" className="text-sm font-medium">
                 Lesson Outline
@@ -66,14 +94,18 @@ export default function Home() {
                 name="lesson-outline"
                 placeholder="Example: Cover the key concepts of constellations for middle school students..."
                 className="min-h-[160px] w-full resize-y rounded-md border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                value={outline}
+                onChange={e => setOutline(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div className="flex justify-end">
               <button
                 type="submit"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                disabled={loading || !outline.trim()}
               >
-                Generate
+                {loading ? "Generating..." : "Generate"}
               </button>
             </div>
           </form>
@@ -91,13 +123,13 @@ export default function Home() {
               <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-medium">
-                    Lesson Title
+                    Lesson Outline
                   </th>
                   <th scope="col" className="px-4 py-3 font-medium">
                     Status
                   </th>
                   <th scope="col" className="px-4 py-3 font-medium text-right">
-                    Actions
+                    Created At
                   </th>
                 </tr>
               </thead>
@@ -105,35 +137,45 @@ export default function Home() {
                 {lessons.map((lesson) => (
                   <tr key={lesson.id} className="transition hover:bg-muted/50">
                     <td className="px-4 py-3">
-                      <Link
-                        href={lesson.href}
-                        className="font-medium text-primary hover:underline"
+                      <span
+                        className="font-medium text-primary max-w-[320px] truncate block cursor-pointer"
+                        title={lesson.outline}
                       >
-                        {lesson.title}
-                      </Link>
+                        {lesson.outline.length > 80
+                          ? lesson.outline.slice(0, 77) + '...'
+                          : lesson.outline}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${statusStyles[lesson.status]}`}
-                      >
-                        <span
-                          className={`h-2 w-2 rounded-full ${statusDotStyles[lesson.status]}`}
-                        />
+                      <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${lesson.status === 'completed' ? statusStyles.Generated : statusStyles.Generating}`}>
+                        <span className={`h-2 w-2 rounded-full ${lesson.status === 'completed' ? statusDotStyles.Generated : statusDotStyles.Generating}`} />
                         {lesson.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={lesson.href}
-                        className="text-xs font-semibold text-primary hover:underline"
-                      >
-                        View
-                      </Link>
+                      {new Date(lesson.created_at).toLocaleString()}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex justify-between items-center mt-4">
+            <button
+              className="px-3 py-1 rounded bg-muted text-xs"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              Previous
+            </button>
+            <span className="text-xs">Page {page + 1} of {Math.max(1, Math.ceil(total / limit))}</span>
+            <button
+              className="px-3 py-1 rounded bg-muted text-xs"
+              onClick={() => setPage((p) => (p + 1 < Math.ceil(total / limit) ? p + 1 : p))}
+              disabled={page + 1 >= Math.ceil(total / limit)}
+            >
+              Next
+            </button>
           </div>
         </section>
       </div>

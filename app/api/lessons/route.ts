@@ -21,6 +21,32 @@ function requireEnv(name: string, value: string | undefined) {
   return value;
 }
 
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const limit = parseInt(searchParams.get('limit') || '10', 10);
+  const offset = parseInt(searchParams.get('offset') || '0', 10);
+
+  const supabase = getServiceSupabaseClient();
+
+  // Fetch lessons with pagination
+  const { data: lessons, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  // Get total count
+  const { count } = await supabase
+    .from('lessons')
+    .select('*', { count: 'exact', head: true });
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to fetch lessons' }, { status: 500 });
+  }
+
+  return NextResponse.json({ lessons, total: count ?? 0 });
+}
+// POST handler follows
 export async function POST(request: Request) {
   const contentType = request.headers.get('content-type');
   if (!contentType || !contentType.includes('application/json')) {

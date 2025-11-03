@@ -8,11 +8,34 @@ type LessonViewerProps = {
   jsx: string | null;
 };
 
+function ensureExport(source: string) {
+  if (/export\s+(default\s+)?[A-Za-z]/.test(source) || /module\.exports/.test(source)) {
+    return source;
+  }
+
+  const componentMatch = source.match(
+    /(?:const|let|var)\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:\([^=]*\)\s*=>|function\s*\()/,
+  );
+
+  if (componentMatch?.[1]) {
+    return `${source}\n\nexport default ${componentMatch[1]};`;
+  }
+
+  const functionMatch = source.match(/function\s+([A-Z][A-Za-z0-9_]*)\s*\(/);
+  if (functionMatch?.[1]) {
+    return `${source}\n\nexport default ${functionMatch[1]};`;
+  }
+
+  return `${source}\n\nexport default () => React.createElement("div", null, "Generated lesson did not return a component");`;
+}
+
 function compileJsx(source: string) {
-  const transformed = Babel.transform(source, {
+  const preparedSource = ensureExport(source);
+
+  const transformed = Babel.transform(preparedSource, {
     presets: [
       ["env", { modules: "commonjs", targets: { esmodules: true } }],
-      ["react", { runtime: "automatic" }],
+      ["react", { runtime: "classic" }],
       "typescript",
     ],
     filename: "Lesson.tsx",
@@ -29,7 +52,7 @@ function compileJsx(source: string) {
   const moduleLike = { exports } as { exports: Record<string, unknown> };
 
   const require = (id: string) => {
-    if (id === "react") {
+    if (id === "react" || id === "react/jsx-runtime") {
       return React;
     }
 
@@ -39,14 +62,27 @@ function compileJsx(source: string) {
   const fn = new Function("exports", "module", "require", "React", transformed.code ?? "");
   fn(exports, moduleLike, require, React);
 
-  const resolved =
+  let resolved =
     moduleLike.exports.default ??
     (moduleLike.exports as Record<string, unknown>).Lesson ??
     moduleLike.exports;
+
+  // If resolved is not a function, try to find any exported function
+  if (typeof resolved !== "function") {
+    for (const key in moduleLike.exports) {
+      const value = moduleLike.exports[key];
+      if (typeof value === "function") {
+        resolved = value;
+        break;
+      }
+    }
+  }
+
   if (typeof resolved === "function") {
     return resolved as React.ComponentType;
   }
 
+  console.error("Module exports:", moduleLike.exports);
   throw new Error("Generated code did not export a component");
 }
 

@@ -31,7 +31,8 @@ export default function Home() {
   const [lessons, setLessons] = useState<LessonApiRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [outline, setOutline] = useState("");
   const limit = 10;
 
@@ -66,7 +67,7 @@ export default function Home() {
             onSubmit={async (e) => {
               e.preventDefault();
               if (!outline.trim()) return;
-              setLoading(true);
+              setGenerating(true);
               try {
                 await fetch("/api/lessons", {
                   method: "POST",
@@ -77,7 +78,7 @@ export default function Home() {
                 setPage(0);
                 await fetchLessons(0);
               } finally {
-                setLoading(false);
+                setGenerating(false);
               }
             }}
           >
@@ -92,16 +93,16 @@ export default function Home() {
                 className="min-h-[160px] w-full resize-y rounded-md border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={outline}
                 onChange={e => setOutline(e.target.value)}
-                disabled={loading}
+                disabled={generating}
               />
             </div>
             <div className="flex justify-end">
               <button
                 type="submit"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-                disabled={loading || !outline.trim()}
+                disabled={generating || !outline.trim()}
               >
-                {loading ? "Generating..." : "Generate"}
+                {generating ? "Generating..." : "Generate"}
               </button>
             </div>
           </form>
@@ -110,9 +111,27 @@ export default function Home() {
         <section className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Recent Lessons</h2>
-            <span className="text-xs text-muted-foreground">
-              Click a lesson title to open it.
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                Click a lesson title to open it.
+              </span>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/80 border border-border"
+                title="Refresh lesson list"
+                onClick={async () => {
+                  setRefreshing(true);
+                  try {
+                    await fetchLessons(page);
+                  } finally {
+                    setRefreshing(false);
+                  }
+                }}
+                disabled={refreshing}
+              >
+                &#x21bb; Refresh
+              </button>
+            </div>
           </div>
           <div className="overflow-hidden rounded-lg border">
             <table className="min-w-full divide-y divide-border text-sm">

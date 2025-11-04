@@ -14,14 +14,9 @@ type LessonRecord = {
   [key: string]: unknown;
 };
 
-type LessonGenerationLog = {
-  [key: string]: unknown;
-};
-
 export type LessonWithJsx = {
   lesson: LessonRecord;
   jsx: string | null;
-  logs: LessonGenerationLog[];
 };
 
 async function downloadJsxFromStorage(
@@ -101,21 +96,8 @@ export async function loadLessonWithJsx(lessonId: string): Promise<LessonWithJsx
     jsx = await fetchJsxFromPublicUrl(lesson);
   }
 
-  const { data: logsData, error: logsError } = await supabase
-    .from('lesson_generation_logs')
-    .select('*')
-    .eq('lesson_id', lessonId)
-    .order('event_timestamp', { ascending: true });
-
-  if (logsError) {
-    console.error('Failed to load lesson generation logs', logsError);
-  }
-
-  const logs = (logsData ?? []) as LessonGenerationLog[];
-
   return {
     lesson,
     jsx,
-    logs,
   };
 }

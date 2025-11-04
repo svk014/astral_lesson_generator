@@ -1,4 +1,5 @@
 import { Stagehand } from '@browserbasehq/stagehand';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
@@ -8,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as ts from 'typescript';
 import { z } from 'zod';
 
-import { geminiModel, resolvedGeminiModel } from '../gemini/client';
+import { geminiModel } from '../gemini/client';
 import type { ValidationResult } from './types';
 
 const runtimeAssertionSchema = z.object({
@@ -29,44 +30,28 @@ const runtimeTestPlanSchema = z.object({
 type RuntimeTestPlan = z.infer<typeof runtimeTestPlanSchema>;
 type RuntimeAssertion = z.infer<typeof runtimeAssertionSchema>;
 
-const STAGEHAND_SUPPORTED_MODELS = new Set([
-  'gpt-4.1',
-  'gpt-4.1-mini',
-  'gpt-4.1-nano',
-  'o4-mini',
-  'o3',
-  'o3-mini',
-  'o1',
-  'o1-mini',
-  'gpt-4o',
-  'gpt-4o-mini',
-  'gpt-4o-2024-08-06',
-  'gpt-4.5-preview',
-  'o1-preview',
-  'claude-3-5-sonnet-latest',
-  'claude-3-5-sonnet-20240620',
-  'claude-3-5-sonnet-20241022',
-  'claude-3-7-sonnet-20250219',
-  'claude-3-7-sonnet-latest',
-  'cerebras-llama-3.3-70b',
-  'cerebras-llama-3.1-8b',
-  'groq-llama-3.3-70b-versatile',
-  'groq-llama-3.3-70b-specdec',
-  'moonshotai/kimi-k2-instruct',
-  'gemini-1.5-flash',
-  'gemini-1.5-pro',
-  'gemini-1.5-flash-8b',
-  'gemini-2.0-flash-lite',
-  'gemini-2.0-flash',
-  'gemini-2.5-flash-preview-04-17',
-  'gemini-2.5-pro-preview-03-25',
-]);
-
-const DEFAULT_STAGEHAND_GEMINI_MODEL = 'gemini-1.5-pro';
-
 export const generationConfig = {
   responseMimeType: 'application/json',
 };
+
+const DEFAULT_STAGEHAND_MODEL = 'gpt-4o-mini';
+
+const RUNTIME_TEMPLATE_PLACEHOLDER = '{{CONTENT}}';
+const RUNTIME_TEMPLATE_PATH = path.resolve(
+  process.cwd(),
+  'lib/generation/runtime-preview.template.html',
+);
+
+const runtimePreviewTemplate = (() => {
+  const template = readFileSync(RUNTIME_TEMPLATE_PATH, 'utf8');
+  if (!template.includes(RUNTIME_TEMPLATE_PLACEHOLDER)) {
+    throw new Error(
+      `Runtime preview template missing placeholder ${RUNTIME_TEMPLATE_PLACEHOLDER}. ` +
+        `Expected it in ${RUNTIME_TEMPLATE_PATH}.`,
+    );
+  }
+  return template;
+})();
 
 export function stripJsonFence(raw: string): string {
   const trimmed = raw.trim();
@@ -160,40 +145,7 @@ function renderJsxToStaticPage(jsx: string): string {
   const Component = compileJsxToComponent(jsx);
   const markup = renderToStaticMarkup(React.createElement(Component));
 
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Runtime Validation Preview</title>
-    <style>
-      :root {
-        color-scheme: dark;
-      }
-      body {
-        margin: 0;
-        font-family: 'Inter', system-ui, sans-serif;
-        background: #0f172a;
-        color: #e2e8f0;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 48px;
-      }
-      .runtime-wrapper {
-        width: min(960px, 100%);
-        background: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(148, 163, 184, 0.3);
-        border-radius: 16px;
-        padding: 32px;
-        box-shadow: 0 30px 120px rgba(15, 23, 42, 0.45);
-      }
-    </style>
-  </head>
-  <body>
-    <main class="runtime-wrapper">${markup}</main>
-  </body>
-</html>`;
+  return runtimePreviewTemplate.replace(RUNTIME_TEMPLATE_PLACEHOLDER, markup);
 }
 
 function evaluateRuntimeAssertion(
@@ -388,33 +340,17 @@ export async function validateJSXRuntime(jsx: string): Promise<ValidationResult>
     previewServer = await startRuntimePreviewServer(html);
 
     const stagehandModelOverride = process.env.STAGEHAND_MODEL?.trim();
-    let stagehandModelName: string;
-    if (stagehandModelOverride && stagehandModelOverride.length > 0) {
-      stagehandModelName = stagehandModelOverride;
-      if (!STAGEHAND_SUPPORTED_MODELS.has(stagehandModelOverride)) {
-        console.warn(
-          `[Stagehand] Model override "${stagehandModelOverride}" is not in the supported list. Stagehand may reject it.`,
-        );
-      }
-    } else if (STAGEHAND_SUPPORTED_MODELS.has(resolvedGeminiModel)) {
-      stagehandModelName = resolvedGeminiModel;
-    } else {
-      stagehandModelName = DEFAULT_STAGEHAND_GEMINI_MODEL;
-      console.warn(
-        `[Stagehand] Gemini model "${resolvedGeminiModel}" is not supported. Falling back to "${stagehandModelName}". Set STAGEHAND_MODEL to override.`,
-      );
-    }
-
-    const stagehandApiKey = process.env.GEMINI_API_KEY;
-    let stagehandModel: string | { modelName: string; apiKey: string } = stagehandModelName;
-    if (/^gemini/i.test(stagehandModelName) && stagehandApiKey) {
-      stagehandModel = { modelName: stagehandModelName, apiKey: stagehandApiKey };
-    }
+    const stagehandModelName = stagehandModelOverride && stagehandModelOverride.length > 0
+      ? stagehandModelOverride
+      : DEFAULT_STAGEHAND_MODEL;
 
     stagehand = new Stagehand({
       env: 'LOCAL',
       cacheDir: path.resolve(process.cwd(), '.stagehand-cache'),
-      model: stagehandModel,
+      model: {
+        modelName: stagehandModelName,
+        apiKey: process.env.OPENAI_API_KEY,
+      }
     });
     await stagehand.init();
 

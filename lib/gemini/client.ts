@@ -1,9 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GEMINI_API_KEY;
-const DEFAULT_MODEL = "gemini-1.5-pro";
+const DEFAULT_MODEL = "gemini-2.5-flash";
 const supportedModels = new Set([
 	"gemini-2.5-pro",
+    "gemini-2.5-flash",
 ]);
 
 if (!apiKey) throw new Error("GEMINI_API_KEY not set");

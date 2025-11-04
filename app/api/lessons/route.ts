@@ -82,7 +82,7 @@ export async function POST(request: Request) {
   try {
     const { data: createdLesson, error: insertError } = await supabase
       .from('lessons')
-      .insert({ outline: normalizedOutline })
+      .insert({ outline: normalizedOutline, status: 'pending' })
       .select()
       .single<LessonRow>();
 
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     const { data: updatedLesson, error: updateError } = await supabase
       .from('lessons')
       .update({
-        status: 'running',
+        status: 'queued',
         temporal_workflow_id: handle.workflowId,
         temporal_run_id: handle.firstExecutionRunId,
       })

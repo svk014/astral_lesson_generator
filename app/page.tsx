@@ -5,17 +5,29 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 
 const statusStyles: Record<string, string> = {
-  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200",
+  pending: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
+  queued: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200",
   running: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200",
+  generating_jsx: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200",
+  validating_jsx: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200",
+  storing_jsx: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-200",
+  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200",
   failed: "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-200",
-  queued: "bg-slate-100 text-slate-700 dark:bg-slate-500/10 dark:text-slate-200",
+  cancelled: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200",
+  timeout: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200",
 };
 
 const statusDotStyles: Record<string, string> = {
-  completed: "bg-emerald-500",
+  pending: "bg-slate-500",
+  queued: "bg-blue-500",
   running: "bg-amber-500",
+  generating_jsx: "bg-purple-500",
+  validating_jsx: "bg-indigo-500",
+  storing_jsx: "bg-cyan-500",
+  completed: "bg-emerald-500",
   failed: "bg-red-500",
-  queued: "bg-slate-500",
+  cancelled: "bg-orange-500",
+  timeout: "bg-gray-500",
 };
 
 type LessonApiRow = {

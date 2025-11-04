@@ -47,6 +47,7 @@ export async function getLessonById(lessonId: string) {
   return data;
 }
 
+
 export async function markLessonCompleted(
   lessonId: string,
   payload?: { jsxPublicUrl: string; jsxStoragePath: string },
@@ -63,6 +64,36 @@ export async function markLessonCompleted(
 
   if (error) {
     throw new Error(`Failed to update lesson: ${error.message}`);
+  }
+}
+
+export async function markLessonQueued(lessonId: string) {
+  const { error } = await supabase
+    .from('lessons')
+    .update({ status: 'queued' })
+    .eq('id', lessonId);
+  if (error) {
+    throw new Error(`Failed to mark lesson queued: ${error.message}`);
+  }
+}
+
+export async function markLessonRunning(lessonId: string) {
+  const { error } = await supabase
+    .from('lessons')
+    .update({ status: 'running' })
+    .eq('id', lessonId);
+  if (error) {
+    throw new Error(`Failed to mark lesson running: ${error.message}`);
+  }
+}
+
+export async function markLessonStep(lessonId: string, step: string) {
+  const { error } = await supabase
+    .from('lessons')
+    .update({ status: step })
+    .eq('id', lessonId);
+  if (error) {
+    throw new Error(`Failed to mark lesson step: ${error.message}`);
   }
 }
 

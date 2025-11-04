@@ -5,7 +5,8 @@ import * as Babel from "@babel/standalone";
 import React from "react";
 
 type LessonViewerProps = {
-  jsx: string | null;
+  jsx?: string | null;
+  jsxUrl?: string | null;
 };
 
 function ensureExport(source: string) {
@@ -86,19 +87,25 @@ function compileJsx(source: string) {
   throw new Error("Generated code did not export a component");
 }
 
-export function LessonViewer({ jsx }: LessonViewerProps) {
+export function LessonViewer({ jsx, jsxUrl }: LessonViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [Component, setComponent] = useState<React.ComponentType | null>(null);
+  const [jsxContent, setJsxContent] = useState<string | null>(jsx ?? null);
 
   useEffect(() => {
-    if (!jsx) {
+    setError(null);
+    setJsxContent(jsx ?? null);
+  }, [jsx]);
+
+  useEffect(() => {
+    if (!jsxContent) {
       setError("Lesson content is not available yet.");
       setComponent(null);
       return;
     }
 
     try {
-      const compiled = compileJsx(jsx);
+      const compiled = compileJsx(jsxContent);
       setComponent(() => compiled);
       setError(null);
     } catch (err) {
@@ -107,7 +114,7 @@ export function LessonViewer({ jsx }: LessonViewerProps) {
       setError(message);
       setComponent(null);
     }
-  }, [jsx]);
+  }, [jsxContent]);
 
   if (error) {
     return (
@@ -126,7 +133,7 @@ export function LessonViewer({ jsx }: LessonViewerProps) {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-6 shadow">
+    <div className="rounded-lg border bg-card p-6 shadow w-full h-full">
       <Component />
     </div>
   );

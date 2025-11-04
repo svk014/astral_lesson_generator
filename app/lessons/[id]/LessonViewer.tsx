@@ -6,7 +6,6 @@ import React from "react";
 
 type LessonViewerProps = {
   jsx?: string | null;
-  jsxUrl?: string | null;
 };
 
 function ensureExport(source: string) {
@@ -87,7 +86,7 @@ function compileJsx(source: string) {
   throw new Error("Generated code did not export a component");
 }
 
-export function LessonViewer({ jsx, jsxUrl }: LessonViewerProps) {
+export function LessonViewer({ jsx }: LessonViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [Component, setComponent] = useState<React.ComponentType | null>(null);
   const [jsxContent, setJsxContent] = useState<string | null>(jsx ?? null);

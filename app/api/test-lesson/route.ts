@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const outputPath = path.join(process.cwd(), 'sandbox', 'output.jsx');
     const jsx = await fs.readFile(outputPath, 'utf-8');

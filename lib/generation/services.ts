@@ -2,28 +2,16 @@ import * as ts from 'typescript';
 import { z } from 'zod';
 
 import { geminiModel } from '../gemini/client';
+import { generationConfig, stripJsonFence } from './runtimeValidation';
+import type { ValidationResult } from './types';
 
-type ValidationResult = { valid: boolean; errors?: string[] };
+export { validateJSXRuntime } from './runtimeValidation';
 
 const jsxResponseSchema = z.object({
   jsx: z.string().min(1, 'Gemini returned an empty JSX payload'),
   notes: z.string().optional(),
 });
 
-const generationConfig = {
-  responseMimeType: 'application/json',
-};
-
-function stripJsonFence(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.startsWith('```')) {
-    const fenceMatch = /^```[a-zA-Z0-9_-]*\n([\s\S]*?)```$/m.exec(trimmed);
-    if (fenceMatch?.[1]) {
-      return fenceMatch[1].trim();
-    }
-  }
-  return trimmed;
-}
 
 function parseJsxFromResponse(raw: string): string {
   const sanitized = stripJsonFence(raw);
@@ -102,12 +90,6 @@ export async function validateJSXStatic(jsx: string): Promise<ValidationResult> 
     const message = err instanceof Error ? err.message : 'Unknown static validation error';
     return { valid: false, errors: [message] };
   }
-}
-
-export async function validateJSXRuntime(jsx: string): Promise<ValidationResult> {
-  void jsx;
-  // TODO: integrate Playwright/Puppeteer to render JSX and capture runtime errors
-  return { valid: true };
 }
 
 export async function fixIssuesWithGemini(jsx: string, errors: string[]): Promise<string> {

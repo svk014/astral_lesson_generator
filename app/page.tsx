@@ -51,17 +51,13 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 px-6 py-12">
-        <header className="text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Astral Lesson Generator
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Provide a lesson outline and track generation progress all in one place.
-          </p>
-        </header>
-
-        <section>
+      <div className="mx-auto flex w-full max-w-6xl flex-row gap-8 px-6 py-6 h-[calc(100vh-32px)]">
+        {/* Left: Generator */}
+        <div className="flex flex-col flex-1 max-w-md">
+          <header className="mb-8">
+            <h1 className="text-3xl font-semibold tracking-tight">Astral Lesson Generator</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Provide a lesson outline and track generation progress all in one place.</p>
+          </header>
           <form
             className="flex flex-col gap-4 rounded-lg border bg-card p-6 shadow-sm"
             onSubmit={async (e) => {
@@ -83,9 +79,7 @@ export default function Home() {
             }}
           >
             <div className="space-y-2">
-              <label htmlFor="lesson-outline" className="text-sm font-medium">
-                Lesson Outline
-              </label>
+              <label htmlFor="lesson-outline" className="text-sm font-medium">Lesson Outline</label>
               <textarea
                 id="lesson-outline"
                 name="lesson-outline"
@@ -106,15 +100,14 @@ export default function Home() {
               </button>
             </div>
           </form>
-        </section>
+        </div>
 
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+        {/* Right: Lesson List */}
+  <div className="flex flex-col flex-[2] min-w-[400px] max-w-2xl h-full relative">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold">Recent Lessons</h2>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                Click a lesson title to open it.
-              </span>
+              <span className="text-xs text-muted-foreground">Click a lesson title to open it.</span>
               <button
                 type="button"
                 className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/80 border border-border"
@@ -133,19 +126,13 @@ export default function Home() {
               </button>
             </div>
           </div>
-          <div className="overflow-hidden rounded-lg border">
+          <div className="overflow-y-auto rounded-lg border flex-1 pb-20">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    Lesson Outline
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    Status
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium text-right">
-                    Created At
-                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">Lesson Outline</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                  <th scope="col" className="px-4 py-3 font-medium text-right">Created At</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-card/80">
@@ -174,15 +161,13 @@ export default function Home() {
                         {lesson.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      {new Date(lesson.created_at).toLocaleString()}
-                    </td>
+                    <td className="px-4 py-3 text-right">{new Date(lesson.created_at).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between items-center mt-4">
+          <div className="absolute left-0 right-0 bottom-0 flex justify-between items-center bg-background py-3 px-4 border-t z-20">
             <button
               className="px-3 py-1 rounded bg-muted text-xs"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
@@ -199,7 +184,7 @@ export default function Home() {
               Next
             </button>
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );

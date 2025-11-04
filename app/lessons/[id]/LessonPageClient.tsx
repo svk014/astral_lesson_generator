@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { LessonViewer } from "./LessonViewer";
 
 type LessonPageClientProps = {
@@ -14,26 +12,18 @@ type LessonPageClientProps = {
 };
 
 export function LessonPageClient({ lesson, jsx }: LessonPageClientProps) {
-  const [open, setOpen] = useState(false);
   const hasContent = Boolean(jsx);
 
   return (
-    <div className="min-h-screen w-full bg-background flex flex-col">
-      <div className="w-full bg-muted border-b px-4 py-2 flex items-center">
-        <button
-          className="mr-2 px-2 py-1 rounded bg-primary text-white text-xs"
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? "Hide Outline" : "Show Outline"}
-        </button>
-        {open && (
-          <div className="text-sm text-muted-foreground whitespace-pre-line flex-1">
-            {lesson.outline}
-          </div>
-        )}
-      </div>
+    <div className="relative flex min-h-screen w-full bg-background">
+      <aside className="pointer-events-auto absolute right-6 top-6 max-w-xs rounded-lg border bg-card/90 p-4 shadow-lg backdrop-blur">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Lesson Outline</p>
+        <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-relaxed text-foreground">
+          {lesson.outline}
+        </p>
+      </aside>
 
-      <div className="flex-1 w-full h-full overflow-auto">
+      <div className="flex-1 h-full w-full overflow-auto px-6 py-10">
         {hasContent ? (
           <LessonViewer jsx={jsx ?? undefined} />
         ) : (

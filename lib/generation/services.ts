@@ -42,8 +42,7 @@ function parseJsxFromResponse(raw: string): string {
   return trimmedJsx;
 }
 
-export async function refinePromptWithSystemMessage(outline: string): Promise<string> {
-  return `You are an expert React educator. Generate a standalone JSX component for this lesson outline: "${outline}". Requirements: Output only JSX code, nothing else. Use emojis for visual elements where possible. Code must compile and render without errors. Declare exactly one top-level component and end the file with "export default <ComponentName>;". Do not emit additional exports or helpers. No external dependencies except React. The component must occupy the full viewport (set a root wrapper with minHeight 100vh and width 100%), include generous but minimalist padding, and present content in a clean, spacious layout suitable for desktop.`;
+  return `You are an expert React educator. Generate a standalone JSX component for this lesson outline: "${outline}". Requirements: Output only JSX code, nothing else. Use emojis for visual elements where possible. Code must compile and render without errors. Declare exactly one top-level component and end the file with "export default <ComponentName>;". Do not emit additional exports or helpers. No external dependencies except React. The component must occupy the full viewport (set a root wrapper with minHeight 100vh and width 100%), include generous but minimalist padding, and present content in a clean, spacious layout suitable for desktop. The design must look great in a dark theme (dark backgrounds, light text, good contrast, and visually pleasing accent colors).`;
 }
 
 export async function generateJSXWithGemini(prompt: string): Promise<string> {

@@ -301,8 +301,12 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
     const failures: string[] = [];
     let testsPassed = 0;
 
+    console.log(
+      `[Stagehand] Running ${testPlan.tests.length} Gemini-generated runtime tests on JSX component...`,
+    );
     for (const test of testPlan.tests) {
       try {
+        console.log(`[Stagehand] Executing test: "${test.name}"`);
         const result = await retryWithExponentialBackoff(
           () => activeStagehand.extract(test.extractionPrompt, z.string()),
           {
@@ -312,17 +316,30 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
             multiplier: 1,
           },
         );
+        console.log(
+          `[Stagehand] Test "${test.name}" extracted: "${result.substring(0, 80)}${result.length > 80 ? '...' : ''}"`,
+        );
+
         const evaluation = evaluateRuntimeAssertion(result, test.assertion);
         if (!evaluation.ok) {
-          failures.push(`Test "${test.name}" failed: ${evaluation.reason}`);
+          const failMsg = `Test "${test.name}" failed: ${evaluation.reason}`;
+          console.warn(`[Stagehand] ${failMsg}`);
+          failures.push(failMsg);
         } else {
           testsPassed += 1;
+          console.log(`[Stagehand] ✓ Test "${test.name}" passed`);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        failures.push(`Test "${test.name}" errored: ${message}`);
+        const errMsg = `Test "${test.name}" errored: ${message}`;
+        console.error(`[Stagehand] ${errMsg}`);
+        failures.push(errMsg);
       }
     }
+
+    console.log(
+      `[Stagehand] Test results: ${testsPassed}/${testPlan.tests.length} passed`,
+    );
 
     if (failures.length > 0) {
       const result: RuntimeValidationResult = {
@@ -344,6 +361,7 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
     return runtimeValidationResultSchema.parse(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    console.error('[Stagehand] Fatal error during runtime validation:', message);
     const result: RuntimeValidationResult = { valid: false, errors: [message] };
     return runtimeValidationResultSchema.parse(result);
   } finally {

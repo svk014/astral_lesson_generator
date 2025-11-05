@@ -25,12 +25,15 @@ async function run() {
     throw new Error('TEMPORAL_TASK_QUEUE is required');
   }
 
+  console.log('[Worker] Connecting to Temporal...');
   const connection = await NativeConnection.connect({
     address,
     tls: tlsDisabled ? undefined : {},
     metadata: apiKey ? { authorization: `Bearer ${apiKey}` } : undefined,
   });
+  console.log('[Worker] Connected to Temporal');
 
+  console.log('[Worker] Creating worker...');
   const worker = await Worker.create({
     connection,
     namespace,
@@ -38,8 +41,9 @@ async function run() {
     activities,
     taskQueue,
   });
+  console.log('[Worker] Worker created');
 
-  console.log(`Worker started for task queue: ${taskQueue}`);
+  console.log(`[Worker] Started for task queue: ${taskQueue}`);
   await worker.run();
 }
 

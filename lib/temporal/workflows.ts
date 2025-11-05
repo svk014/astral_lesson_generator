@@ -61,14 +61,21 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
   const { lessonId, outline } = args;
   const { workflowId, runId } = workflowInfo();
 
+  console.log(`[Workflow] Starting lesson generation for lesson ${lessonId}`);
   await activities.markLessonQueued(lessonId);
+  console.log(`[Workflow] Lesson queued`);
+  
   await activities.getLessonById(lessonId);
+  console.log(`[Workflow] Lesson fetched from DB`);
+  
   await activities.markLessonRunning(lessonId);
+  console.log(`[Workflow] Lesson marked as running`);
 
   const logTasks: Promise<void>[] = [];
 
   let outcome;
   try {
+    console.log(`[Workflow] Starting JSX generation pipeline...`);
     outcome = await runLessonGeneration(
     { outline, lessonId },
     {
@@ -130,12 +137,16 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
   );
   } finally {
     // Ensure logs are flushed even if generation crashes
+    console.log(`[Workflow] Flushing logs for lesson ${lessonId}...`);
     await flushGenerationLogs(logTasks, lessonId);
+    console.log(`[Workflow] Logs flushed`);
   }
 
   if (outcome.status === 'completed') {
+    console.log(`[Workflow] Lesson generation completed successfully`);
     return { lessonId, status: 'completed', jsxUrl: outcome.storage?.publicUrl ?? null };
   }
 
+  console.log(`[Workflow] Lesson generation failed: ${outcome.error}`);
   return { lessonId, status: 'failed', error: outcome.error };
 }

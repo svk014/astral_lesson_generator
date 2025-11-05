@@ -14,10 +14,10 @@ import { geminiModel } from '../gemini/client';
 import {
   runtimeAssertionSchema,
   runtimeTestPlanSchema,
-  validationResultSchema,
+  runtimeValidationResultSchema,
   type RuntimeAssertion,
   type RuntimeTestPlan,
-  type ValidationResult,
+  type RuntimeValidationResult,
 } from './schemas';
 
 export const generationConfig = {
@@ -264,7 +264,7 @@ async function startRuntimePreviewServer(html: string): Promise<{ url: string; c
   });
 }
 
-export async function validateJSXRuntime(jsx: string): Promise<ValidationResult> {
+export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidationResult> {
   let stagehand: Stagehand | null = null;
   let previewServer: { url: string; close: () => Promise<void> } | null = null;
 
@@ -299,6 +299,7 @@ export async function validateJSXRuntime(jsx: string): Promise<ValidationResult>
     await page.goto(previewServer.url, { waitUntil: 'domcontentloaded' });
 
     const failures: string[] = [];
+    let testsPassed = 0;
 
     for (const test of testPlan.tests) {
       try {
@@ -314,6 +315,8 @@ export async function validateJSXRuntime(jsx: string): Promise<ValidationResult>
         const evaluation = evaluateRuntimeAssertion(result, test.assertion);
         if (!evaluation.ok) {
           failures.push(`Test "${test.name}" failed: ${evaluation.reason}`);
+        } else {
+          testsPassed += 1;
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -322,16 +325,27 @@ export async function validateJSXRuntime(jsx: string): Promise<ValidationResult>
     }
 
     if (failures.length > 0) {
-      const result: ValidationResult = { valid: false, errors: failures };
-      return validationResultSchema.parse(result);
+      const result: RuntimeValidationResult = {
+        valid: false,
+        errors: failures,
+        testsPassed,
+        testsRun: testPlan.tests.length,
+        testCases: testPlan.tests,
+      };
+      return runtimeValidationResultSchema.parse(result);
     }
 
-    const result: ValidationResult = { valid: true };
-    return validationResultSchema.parse(result);
+    const result: RuntimeValidationResult = {
+      valid: true,
+      testsPassed,
+      testsRun: testPlan.tests.length,
+      testCases: testPlan.tests,
+    };
+    return runtimeValidationResultSchema.parse(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const result: ValidationResult = { valid: false, errors: [message] };
-    return validationResultSchema.parse(result);
+    const result: RuntimeValidationResult = { valid: false, errors: [message] };
+    return runtimeValidationResultSchema.parse(result);
   } finally {
     if (previewServer) {
       await previewServer.close().catch(() => {

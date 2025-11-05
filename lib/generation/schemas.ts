@@ -50,6 +50,27 @@ export const validationResultSchema = z.discriminatedUnion('valid', [
   validationResultFailureSchema,
 ]);
 
+// Enhanced runtime validation result that includes test case details for logging
+export const runtimeValidationResultSuccessSchema = z.object({
+  valid: z.literal(true),
+  testsPassed: z.number().int().min(0),
+  testsRun: z.number().int().min(0),
+  testCases: z.array(runtimeTestCaseSchema).optional(),
+});
+
+export const runtimeValidationResultFailureSchema = z.object({
+  valid: z.literal(false),
+  errors: z.array(z.string()).min(1, 'At least one error required when invalid'),
+  testsPassed: z.number().int().min(0).optional(),
+  testsRun: z.number().int().min(0).optional(),
+  testCases: z.array(runtimeTestCaseSchema).optional(),
+});
+
+export const runtimeValidationResultSchema = z.discriminatedUnion('valid', [
+  runtimeValidationResultSuccessSchema,
+  runtimeValidationResultFailureSchema,
+]);
+
 export type RuntimeAssertion = z.infer<typeof runtimeAssertionSchema>;
 export type EqualsAssertion = z.infer<typeof equalsAssertionSchema>;
 export type ContainsAssertion = z.infer<typeof containsAssertionSchema>;
@@ -58,3 +79,4 @@ export type RuntimeTestCase = z.infer<typeof runtimeTestCaseSchema>;
 export type RuntimeTestPlan = z.infer<typeof runtimeTestPlanSchema>;
 export type JsxResponse = z.infer<typeof jsxResponseSchema>;
 export type ValidationResult = z.infer<typeof validationResultSchema>;
+export type RuntimeValidationResult = z.infer<typeof runtimeValidationResultSchema>;

@@ -104,6 +104,7 @@ Commit each migration alongside the feature that depends on it so environments s
 | `bun run lint` | ESLint + TypeScript lint rules |
 | `bun run worker` | Temporal worker executing activities/workflows |
 | `bun run harness` | Local Gemini-to-JSX harness (no Temporal/Supabase) |
+| `bun run scripts/validate-and-fix-harness.ts <jsx-file>` | Validate and iteratively fix an existing JSX file |
 
 ## Rapid JSX harness
 
@@ -120,6 +121,24 @@ bun run harness --outline-file sandbox/outline.md
 Artifacts are written to `sandbox/output.jsx` and `sandbox/logs.json`. The harness uses the same shared generation runner as the Temporal workflow, runs Gemini calls, applies static + runtime validation, and stops before any Supabase or Temporal integration steps.
 
 Structured responses: Gemini is instructed to return JSON matching `{ "jsx": "...", "notes": "optional" }`, which we verify with Zod before compiling. This catches malformed output early and keeps the retry loop short.
+
+## Validate and fix JSX harness
+
+Use this harness to iteratively validate and repair an existing JSX file locally:
+
+```bash
+bun run scripts/validate-and-fix-harness.ts ~/Downloads/lesson.jsx
+```
+
+This harness:
+- Reads the provided JSX file
+- Runs static (TypeScript) validation
+- Runs runtime validation with Stagehand
+- If validation fails, sends errors to Gemini for repair
+- Retries up to 3 times before giving up
+- Writes the final candidate to `sandbox/output.jsx`
+
+Useful for debugging failing lessons or rapidly iterating on JSX without submitting to the full Temporal workflow.
 
 ## Temporal workflow flowchart
 

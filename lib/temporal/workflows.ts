@@ -42,6 +42,21 @@ const activities = proxyActivities<LessonActivities>({
   },
 });
 
+async function flushGenerationLogs(
+  logTasks: Promise<void>[],
+  lessonId: string,
+  label: string = 'Final flush',
+): Promise<void> {
+  const results = await Promise.allSettled(logTasks);
+  const failures = results.filter((r) => r.status === 'rejected');
+  if (failures.length > 0) {
+    console.error(
+      `[Temporal] ${label}: ${failures.length}/${logTasks.length} logs failed for lesson ${lessonId}`,
+      failures.map((f) => (f.status === 'rejected' ? f.reason : null)),
+    );
+  }
+}
+
 export async function lessonGeneratorWorkflow(args: { lessonId: string; outline: string }) {
   const { lessonId, outline } = args;
   const { workflowId, runId } = workflowInfo();
@@ -52,7 +67,9 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
 
   const logTasks: Promise<void>[] = [];
 
-  const outcome = await runLessonGeneration(
+  let outcome;
+  try {
+    outcome = await runLessonGeneration(
     { outline, lessonId },
     {
       refinePrompt: async (value) => {
@@ -106,13 +123,15 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
           await activities.markLessonFailed(lessonId, error);
         },
         flush: async () => {
-          await Promise.allSettled(logTasks);
+          await flushGenerationLogs(logTasks, lessonId, 'Interim flush');
         },
       },
     },
   );
-
-  await Promise.allSettled(logTasks);
+  } finally {
+    // Ensure logs are flushed even if generation crashes
+    await flushGenerationLogs(logTasks, lessonId);
+  }
 
   if (outcome.status === 'completed') {
     return { lessonId, status: 'completed', jsxUrl: outcome.storage?.publicUrl ?? null };

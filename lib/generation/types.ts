@@ -1,4 +1,3 @@
-export type ValidationResult = {
-  valid: boolean;
-  errors?: string[];
-};
+export type ValidationResult =
+  | { valid: true }
+  | { valid: false; errors: string[] };

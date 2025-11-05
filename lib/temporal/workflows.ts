@@ -1,6 +1,7 @@
 import { proxyActivities, workflowInfo } from '@temporalio/workflow';
 
 import { runLessonGeneration } from '../generation/runner';
+import type { ValidationResult } from '../generation/types';
 
 type LessonActivities = {
   getLessonById(lessonId: string): Promise<Record<string, unknown>>;
@@ -14,8 +15,8 @@ type LessonActivities = {
   markLessonStep(lessonId: string, step: string): Promise<void>;
   refinePromptWithSystemMessage(outline: string): Promise<string>;
   generateJSXWithGemini(prompt: string): Promise<string>;
-  validateJSXStatic(jsx: string): Promise<{ valid: boolean; errors?: string[] }>;
-  validateJSXRuntime(jsx: string): Promise<{ valid: boolean; errors?: string[] }>;
+  validateJSXStatic(jsx: string): Promise<ValidationResult>;
+  validateJSXRuntime(jsx: string): Promise<ValidationResult>;
   fixIssuesWithGemini(jsx: string, errors: string[]): Promise<string>;
   storeJSXInSupabase(
     lessonId: string,

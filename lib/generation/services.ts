@@ -1,17 +1,12 @@
 import * as ts from 'typescript';
 import { z } from 'zod';
 
+import { stripJsonFence } from '../utils';
 import { geminiModel } from '../gemini/client';
-import { generationConfig, stripJsonFence } from './runtimeValidation';
-import type { ValidationResult } from './types';
+import { generationConfig } from './runtimeValidation';
+import { jsxResponseSchema, validationResultSchema, type ValidationResult } from './schemas';
 
 export { validateJSXRuntime } from './runtimeValidation';
-
-const jsxResponseSchema = z.object({
-  jsx: z.string().min(1, 'Gemini returned an empty JSX payload'),
-  notes: z.string().optional(),
-});
-
 
 function parseJsxFromResponse(raw: string): string {
   const sanitized = stripJsonFence(raw);
@@ -22,7 +17,15 @@ function parseJsxFromResponse(raw: string): string {
     throw new Error(`Gemini returned invalid JSON: ${(error as Error).message}`);
   }
 
-  const { jsx } = jsxResponseSchema.parse(parsed);
+  const parseResult = jsxResponseSchema.safeParse(parsed);
+  if (!parseResult.success) {
+    const issues = parseResult.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`Invalid JSX response: ${issues}`);
+  }
+
+  const { jsx } = parseResult.data;
   const trimmedJsx = jsx.trim();
   if (!trimmedJsx) {
     throw new Error('Gemini returned an empty JSX string');
@@ -83,12 +86,15 @@ export async function validateJSXStatic(jsx: string): Promise<ValidationResult> 
         }
         return `TS${diag.code}: ${message}`;
       });
-      return { valid: false, errors: messages };
+      const result: ValidationResult = { valid: false, errors: messages };
+      return validationResultSchema.parse(result);
     }
-    return { valid: true };
+    const result: ValidationResult = { valid: true };
+    return validationResultSchema.parse(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown static validation error';
-    return { valid: false, errors: [message] };
+    const result: ValidationResult = { valid: false, errors: [message] };
+    return validationResultSchema.parse(result);
   }
 }
 

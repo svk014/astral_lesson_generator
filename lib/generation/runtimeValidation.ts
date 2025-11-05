@@ -9,33 +9,22 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as ts from 'typescript';
 import { z } from 'zod';
 
+import { retryWithExponentialBackoff, stripJsonFence, sleep } from '../utils';
 import { geminiModel } from '../gemini/client';
-import type { ValidationResult } from './types';
-
-const runtimeAssertionSchema = z.object({
-  type: z.enum(['equals', 'contains', 'not_empty']),
-  expected: z.string().optional(),
-});
-
-const runtimeTestCaseSchema = z.object({
-  name: z.string().min(1),
-  extractionPrompt: z.string().min(1),
-  assertion: runtimeAssertionSchema,
-});
-
-const runtimeTestPlanSchema = z.object({
-  tests: z.array(runtimeTestCaseSchema).min(1).max(5),
-});
-
-type RuntimeTestPlan = z.infer<typeof runtimeTestPlanSchema>;
-type RuntimeAssertion = z.infer<typeof runtimeAssertionSchema>;
+import {
+  runtimeAssertionSchema,
+  runtimeTestPlanSchema,
+  validationResultSchema,
+  type RuntimeAssertion,
+  type RuntimeTestPlan,
+  type ValidationResult,
+} from './schemas';
 
 export const generationConfig = {
   responseMimeType: 'application/json',
 };
 
 const DEFAULT_STAGEHAND_MODEL = 'gpt-4o-mini';
-
 const RUNTIME_TEMPLATE_PLACEHOLDER = '{{CONTENT}}';
 const RUNTIME_TEMPLATE_PATH = path.resolve(
   process.cwd(),
@@ -46,23 +35,11 @@ const runtimePreviewTemplate = (() => {
   const template = readFileSync(RUNTIME_TEMPLATE_PATH, 'utf8');
   if (!template.includes(RUNTIME_TEMPLATE_PLACEHOLDER)) {
     throw new Error(
-      `Runtime preview template missing placeholder ${RUNTIME_TEMPLATE_PLACEHOLDER}. ` +
-        `Expected it in ${RUNTIME_TEMPLATE_PATH}.`,
+      `Runtime preview template missing placeholder ${RUNTIME_TEMPLATE_PLACEHOLDER} in ${RUNTIME_TEMPLATE_PATH}`,
     );
   }
   return template;
 })();
-
-export function stripJsonFence(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.startsWith('```')) {
-    const fenceMatch = /^```[a-zA-Z0-9_-]*\n([\s\S]*?)```$/m.exec(trimmed);
-    if (fenceMatch?.[1]) {
-      return fenceMatch[1].trim();
-    }
-  }
-  return trimmed;
-}
 
 function ensureDefaultExport(source: string): string {
   if (/export\s+(default\s+)?[A-Za-z]/.test(source) || /module\.exports/.test(source)) {
@@ -163,9 +140,6 @@ function evaluateRuntimeAssertion(
 
   switch (assertion.type) {
     case 'equals': {
-      if (typeof assertion.expected !== 'string') {
-        return { ok: false, reason: 'Assertion "equals" is missing expected value.' };
-      }
       const expected = assertion.expected.trim();
       if (trimmed === expected) {
         return { ok: true };
@@ -191,9 +165,6 @@ function evaluateRuntimeAssertion(
       };
     }
     case 'contains': {
-      if (typeof assertion.expected !== 'string') {
-        return { ok: false, reason: 'Assertion "contains" is missing expected value.' };
-      }
       return trimmed.includes(assertion.expected.trim())
         ? { ok: true }
         : {
@@ -206,8 +177,6 @@ function evaluateRuntimeAssertion(
         ? { ok: true }
         : { ok: false, reason: 'Expected non-empty string result.' };
     }
-    default:
-      return { ok: false, reason: `Unsupported assertion type: ${assertion.type}` };
   }
 }
 
@@ -218,40 +187,7 @@ function isRateLimitError(error: unknown): boolean {
       : typeof error === 'string'
         ? error
         : null;
-  if (!message) {
-    return false;
-  }
-  const normalized = message.toLowerCase();
-  return normalized.includes('rate limit');
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function runWithRateLimitRetry<T>(fn: () => Promise<T>): Promise<T> {
-  const maxAttempts = 4;
-  let attempt = 0;
-  let lastError: unknown = null;
-
-  while (attempt < maxAttempts) {
-    attempt += 1;
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (isRateLimitError(error) && attempt < maxAttempts) {
-        const waitMs = 20000 * attempt;
-        await sleep(waitMs);
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw (lastError ?? new Error('Failed after rate-limit retries'));
+  return message ? message.toLowerCase().includes('rate limit') : false;
 }
 
 async function generateRuntimeTestPlan(jsx: string): Promise<RuntimeTestPlan> {
@@ -281,16 +217,15 @@ ${jsx}`;
   }
 
   const sanitized = stripJsonFence(raw);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(sanitized);
-  } catch (error) {
-    throw new Error(
-      `Gemini returned invalid runtime test JSON: ${(error as Error).message}`,
-    );
+  const parseResult = runtimeTestPlanSchema.safeParse(JSON.parse(sanitized));
+  if (!parseResult.success) {
+    const issues = parseResult.error.issues
+      .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`Invalid runtime test plan: ${issues}`);
   }
 
-  return runtimeTestPlanSchema.parse(parsed);
+  return parseResult.data;
 }
 
 async function startRuntimePreviewServer(html: string): Promise<{ url: string; close: () => Promise<void> }> {
@@ -367,8 +302,14 @@ export async function validateJSXRuntime(jsx: string): Promise<ValidationResult>
 
     for (const test of testPlan.tests) {
       try {
-        const result = await runWithRateLimitRetry(() =>
-          activeStagehand.extract(test.extractionPrompt, z.string()),
+        const result = await retryWithExponentialBackoff(
+          () => activeStagehand.extract(test.extractionPrompt, z.string()),
+          {
+            maxAttempts: 4,
+            isRetryable: isRateLimitError,
+            baseDelayMs: 20000,
+            multiplier: 1,
+          },
         );
         const evaluation = evaluateRuntimeAssertion(result, test.assertion);
         if (!evaluation.ok) {
@@ -381,13 +322,16 @@ export async function validateJSXRuntime(jsx: string): Promise<ValidationResult>
     }
 
     if (failures.length > 0) {
-      return { valid: false, errors: failures };
+      const result: ValidationResult = { valid: false, errors: failures };
+      return validationResultSchema.parse(result);
     }
 
-    return { valid: true };
+    const result: ValidationResult = { valid: true };
+    return validationResultSchema.parse(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { valid: false, errors: [message] };
+    const result: ValidationResult = { valid: false, errors: [message] };
+    return validationResultSchema.parse(result);
   } finally {
     if (previewServer) {
       await previewServer.close().catch(() => {

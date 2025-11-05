@@ -56,7 +56,7 @@ async function main() {
   let currentJsx = await readJsxFileOrExit(jsxPath, logger);
   let attempt = 0;
 
-  while (attempt <= MAX_FIX_ATTEMPTS) {
+  while (attempt < MAX_FIX_ATTEMPTS) {
     const staticResult = await validateJSXStatic(currentJsx);
     if (!staticResult.valid) {
       if (logger.staticFailure(attempt, staticResult.errors)) {

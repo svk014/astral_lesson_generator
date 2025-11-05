@@ -9,81 +9,97 @@ import {
   validateJSXRuntime,
   fixIssuesWithGemini,
 } from '../lib/generation/services';
+import { HarnessLogger, ValidationErrors } from './utils/harnessLogger';
 
 const SANDBOX_DIR = path.resolve(process.cwd(), 'sandbox');
 const OUTPUT_FILE = path.join(SANDBOX_DIR, 'output.jsx');
 const MAX_FIX_ATTEMPTS = 3;
 
+interface FixContext {
+  attempt: number;
+  currentJsx: string;
+  errors: ValidationErrors;
+  logger: HarnessLogger;
+}
+
+async function readJsxFileOrExit(filePath: string, logger: HarnessLogger): Promise<string> {
+  try {
+    return await fs.readFile(filePath, 'utf-8');
+  } catch (err) {
+    logger.readFailure(err);
+    process.exit(1);
+  }
+}
+
+async function applyFix({
+  attempt,
+  currentJsx,
+  errors,
+  logger,
+}: FixContext): Promise<{ attempt: number; jsx: string }> {
+  const nextAttempt = attempt + 1;
+  const updatedJsx = await fixIssuesWithGemini(currentJsx, errors ?? []);
+  await fs.writeFile(OUTPUT_FILE, updatedJsx, 'utf-8');
+  logger.savedCandidate(nextAttempt);
+
+  return { attempt: nextAttempt, jsx: updatedJsx };
+}
+
 async function main() {
+  const logger = new HarnessLogger(OUTPUT_FILE, MAX_FIX_ATTEMPTS);
   const jsxPath = process.argv[2];
   if (!jsxPath) {
-    console.error('Usage: bun run validate-and-fix-harness <jsx-file-path>');
+    logger.showUsage();
     process.exit(1);
   }
 
-  let jsx;
-  try {
-    jsx = await fs.readFile(jsxPath, 'utf-8');
-  } catch (err) {
-    console.error('Failed to read JSX file:', err);
-    process.exit(1);
-  }
-
-  let currentJsx = jsx;
+  let currentJsx = await readJsxFileOrExit(jsxPath, logger);
   let attempt = 0;
 
   while (attempt <= MAX_FIX_ATTEMPTS) {
     const staticResult = await validateJSXStatic(currentJsx);
     if (!staticResult.valid) {
-      if (attempt === MAX_FIX_ATTEMPTS) {
-        console.error('Static validation failed after maximum fix attempts:');
-        for (const error of staticResult.errors ?? []) {
-          console.error(`• ${error}`);
-        }
+      if (logger.staticFailure(attempt, staticResult.errors)) {
         process.exit(1);
       }
 
-      console.log('Static validation failed. Attempting to fix with Gemini...');
-      currentJsx = await fixIssuesWithGemini(currentJsx, staticResult.errors ?? []);
-      attempt += 1;
-      await fs.writeFile(OUTPUT_FILE, currentJsx, 'utf-8');
-      console.log(`Attempt ${attempt}: candidate written to ${OUTPUT_FILE}`);
+      const fixResult = await applyFix({
+        attempt,
+        currentJsx,
+        errors: staticResult.errors,
+        logger,
+      });
+
+      attempt = fixResult.attempt;
+      currentJsx = fixResult.jsx;
       continue;
     }
 
-    if (attempt === 0) {
-      console.log('Static validation passed. Running runtime checks powered by Gemini + Stagehand...');
-    } else {
-      console.log('Static validation passed after fixes. Re-running runtime checks powered by Gemini + Stagehand...');
-    }
+    logger.staticSuccess(attempt);
 
     const runtimeResult = await validateJSXRuntime(currentJsx);
     if (runtimeResult.valid) {
-      console.log('Runtime tests passed. JSX is ready.');
+      logger.runtimeSuccess();
       await fs.writeFile(OUTPUT_FILE, currentJsx, 'utf-8');
       process.exit(0);
     }
 
-    if (attempt === MAX_FIX_ATTEMPTS) {
-      console.error('Runtime validation failed after maximum fix attempts:');
-      for (const error of runtimeResult.errors ?? []) {
-        console.error(`• ${error}`);
-      }
+    if (logger.runtimeFailure(attempt, runtimeResult.errors)) {
       process.exit(1);
     }
 
-    console.error('Runtime validation failed:');
-    for (const error of runtimeResult.errors ?? []) {
-      console.error(`• ${error}`);
-    }
-    console.log('Attempting to repair runtime issues with Gemini...');
-    currentJsx = await fixIssuesWithGemini(currentJsx, runtimeResult.errors ?? []);
-    attempt += 1;
-    await fs.writeFile(OUTPUT_FILE, currentJsx, 'utf-8');
-    console.log(`Attempt ${attempt}: candidate written to ${OUTPUT_FILE}`);
+    const fixResult = await applyFix({
+      attempt,
+      currentJsx,
+      errors: runtimeResult.errors,
+      logger,
+    });
+
+    attempt = fixResult.attempt;
+    currentJsx = fixResult.jsx;
   }
 
-  console.error('Exceeded maximum fix attempts.');
+  logger.exhaustedAttempts();
   process.exit(1);
 }
 

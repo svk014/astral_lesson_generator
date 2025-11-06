@@ -9,6 +9,9 @@ import {
   validateJSXRuntime,
   fixIssuesWithGemini,
 } from '../generation/services';
+import {
+  generateAndStoreImages,
+} from '../generation/imageGeneration';
 
 export {
   refinePromptWithSystemMessage,
@@ -19,12 +22,11 @@ export {
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY;
+const serviceRoleKey = process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY;
 const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'lessons';
 
 if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error('Supabase env vars not set');
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PRIVATE_SUPABASE_SECRET_KEY are required');
 }
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -165,4 +167,13 @@ export async function storeJSXInSupabase(
   }
 
   return { publicUrl: publicUrlData.publicUrl, storagePath: filePath };
+}
+
+export async function generateImagesActivity(
+  outline: string,
+  refinedPrompt: string,
+  lessonId: string,
+) {
+  const supabaseClient = createClient(supabaseUrl!, serviceRoleKey!);
+  return generateAndStoreImages(outline, refinedPrompt, lessonId, supabaseClient);
 }

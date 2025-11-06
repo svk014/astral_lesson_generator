@@ -37,8 +37,17 @@ export async function refinePromptWithSystemMessage(outline: string): Promise<st
   return `You are an expert React educator. Generate a standalone JSX component for this lesson outline: "${outline}". Requirements: Output only JSX code, nothing else. Use emojis for visual elements where possible. Code must compile and render without errors. Declare exactly one top-level component and end the file with "export default <ComponentName>;". Do not emit additional exports or helpers. No external dependencies except React. The component must occupy the full viewport (set a root wrapper with minHeight 100vh and width 100%), include generous but minimalist padding, and present content in a clean, spacious layout suitable for desktop. The design must look great in a dark theme (dark backgrounds, light text, good contrast, and visually pleasing accent colors).`;
 }
 
-export async function generateJSXWithGemini(prompt: string): Promise<string> {
-  const contentPrompt = `${prompt}
+export async function generateJSXWithGemini(
+  prompt: string,
+  images?: Array<{ id: string; title: string; shortUrl: string; description: string }>
+): Promise<string> {
+  const imageContext = images
+    ? `\n\nEducational images are available for this lesson:\n${images
+        .map((img) => `- ${img.id} (${img.title}): ${img.shortUrl}\n  Description: ${img.description}`)
+        .join('\n')}\n\nInclude these images in the JSX using <img src="{shortUrl}" alt="{description}" /> tags. Use the exact short URLs provided above.`
+    : '';
+
+  const contentPrompt = `${prompt}${imageContext}
 
 Respond strictly as minified JSON with the following shape:
 {

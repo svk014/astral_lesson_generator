@@ -10,8 +10,8 @@ function requireEnv(name: string, value: string | undefined) {
 
 const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL);
 const serviceRoleKey = requireEnv(
-	'SUPABASE_SERVICE_ROLE_KEY (or NEXT_PRIVATE_SUPABASE_SECRET_KEY)',
-	process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY,
+	'NEXT_PRIVATE_SUPABASE_SECRET_KEY',
+	process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY,
 );
 
 let cachedClient: SupabaseClient | null = null;

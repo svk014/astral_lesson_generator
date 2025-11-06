@@ -10,7 +10,16 @@ export type GenerationLogEntry = {
 
 export type GenerationDeps = {
   refinePrompt: (outline: string) => Promise<string>;
-  generateJSX: (prompt: string) => Promise<string>;
+  generateImages?: (
+    outline: string,
+    refinedPrompt: string,
+    lessonId?: string,
+    recordLog?: (entry: GenerationLogEntry) => Promise<void> | void
+  ) => Promise<Array<{ id: string; title: string; shortUrl: string; description: string }>>;
+  generateJSX: (
+    prompt: string,
+    images?: Array<{ id: string; title: string; shortUrl: string; description: string }>
+  ) => Promise<string>;
   validateJSXStatic: (jsx: string) => Promise<ValidationResult>;
   validateJSXRuntime?: (jsx: string) => Promise<ValidationResult>;
   fixIssues: (jsx: string, errors: string[]) => Promise<string>;
@@ -80,6 +89,25 @@ export async function runLessonGeneration(
   const refinedPrompt = await deps.refinePrompt(outline);
   await record({ step: 'refinePrompt', attempt: 0, status: 'success', info: { outline } });
 
+  // Optionally generate images if hook provided
+  let images: Array<{ id: string; title: string; shortUrl: string; description: string }> = [];
+  if (deps.generateImages) {
+    try {
+      images = await deps.generateImages(outline, refinedPrompt, lessonId, record);
+      await record({
+        step: 'generateImages',
+        attempt: 0,
+        status: 'success',
+        info: { count: images.length, images },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Image generation failed';
+      console.warn(`[Runner] Image generation failed, continuing without images: ${message}`);
+      await record({ step: 'generateImages', attempt: 0, status: 'failure', info: { message } });
+      images = [];
+    }
+  }
+
   let attempt = 0;
   let currentJsx = '';
   let lastErrors: string[] = [];
@@ -89,7 +117,7 @@ export async function runLessonGeneration(
 
     try {
       if (attempt === 1 || lastErrors.length === 0) {
-        currentJsx = await deps.generateJSX(refinedPrompt);
+        currentJsx = await deps.generateJSX(refinedPrompt, images.length > 0 ? images : undefined);
         await record({ step: 'generateJSX', attempt, status: 'success' });
       } else {
         currentJsx = await deps.fixIssues(currentJsx, lastErrors);

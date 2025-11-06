@@ -14,7 +14,15 @@ type LessonActivities = {
   markLessonRunning(lessonId: string): Promise<void>;
   markLessonStep(lessonId: string, step: string): Promise<void>;
   refinePromptWithSystemMessage(outline: string): Promise<string>;
-  generateJSXWithGemini(prompt: string): Promise<string>;
+  generateImagesActivity(
+    outline: string,
+    refinedPrompt: string,
+    lessonId: string,
+  ): Promise<Array<{ id: string; title: string; shortUrl: string; description: string }>>;
+  generateJSXWithGemini(
+    prompt: string,
+    images?: Array<{ id: string; title: string; shortUrl: string; description: string }>,
+  ): Promise<string>;
   validateJSXStatic(jsx: string): Promise<ValidationResult>;
   validateJSXRuntime(jsx: string): Promise<RuntimeValidationResult>;
   fixIssuesWithGemini(jsx: string, errors: string[]): Promise<string>;
@@ -83,9 +91,13 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
         await activities.markLessonStep(lessonId, 'generating_jsx');
         return activities.refinePromptWithSystemMessage(value);
       },
-      generateJSX: async (prompt) => {
+      generateImages: async (outline, refinedPrompt, lessonId, recordLog) => {
+        await activities.markLessonStep(lessonId || '', 'generating_images');
+        return activities.generateImagesActivity(outline, refinedPrompt, lessonId || '');
+      },
+      generateJSX: async (prompt, images) => {
         await activities.markLessonStep(lessonId, 'generating_jsx');
-        return activities.generateJSXWithGemini(prompt);
+        return activities.generateJSXWithGemini(prompt, images);
       },
       validateJSXStatic: async (jsx) => {
         await activities.markLessonStep(lessonId, 'validating_jsx');

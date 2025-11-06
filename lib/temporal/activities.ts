@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 
 import {
   refinePromptWithSystemMessage,
-  generateJSXWithGemini,
+  generateJSXWithGemini as generateJSXService,
   validateJSXStatic,
   validateJSXRuntime,
   fixIssuesWithGemini,
@@ -15,7 +15,6 @@ import {
 
 export {
   refinePromptWithSystemMessage,
-  generateJSXWithGemini,
   validateJSXStatic,
   validateJSXRuntime,
   fixIssuesWithGemini,
@@ -30,6 +29,16 @@ if (!supabaseUrl || !serviceRoleKey) {
 }
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+/**
+ * Activity wrapper for JSX generation that accepts images
+ */
+export async function generateJSXWithGemini(
+  prompt: string,
+  images?: Array<{ id: string; title: string; shortUrl: string; description: string }>,
+): Promise<string> {
+  return generateJSXService(prompt, images);
+}
 
 export async function getLessonById(lessonId: string) {
   const { data, error } = await supabase

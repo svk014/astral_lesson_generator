@@ -196,7 +196,10 @@ Return strictly minified JSON matching:
 { "tests": [ { "name": string, "extractionPrompt": string, "assertion": { "type": "equals" | "contains" | "not_empty", "expected"?: string } } ] }
 
 Guidelines:
-- Focus on verifying meaningful UI text visible to users.
+- Test ONLY the initial rendered content on page load. Do NOT test outcomes of user interactions (form submissions, button clicks, state changes, multi-step workflows).
+- Do NOT assert on content inside conditionally rendered sections that might not be visible by default.
+- Do NOT assert on outcomes of animations or transitions.
+- Focus on verifying meaningful UI text that is present without any user action required.
 - Prompts will be executed via Stagehand's extract(textPrompt, z.string()). Ask for concise answers.
 - Use "equals" only for short, standalone strings such as button labels or titles that appear exactly as-is. If there is any chance of surrounding context, punctuation, or multi-line layout, use "contains" instead.
 - Use "not_empty" when checking presence without specific value.

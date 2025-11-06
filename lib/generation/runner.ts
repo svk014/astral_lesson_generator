@@ -14,7 +14,7 @@ export type GenerationDeps = {
     outline: string,
     refinedPrompt: string,
     lessonId?: string,
-    recordLog?: (entry: GenerationLogEntry) => Promise<void> | void
+    recordLog?: (entry: Omit<GenerationLogEntry, 'timestamp'>) => Promise<void> | void
   ) => Promise<Array<{ id: string; title: string; shortUrl: string; description: string }>>;
   generateJSX: (
     prompt: string,

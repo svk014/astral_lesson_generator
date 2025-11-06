@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateShortHash } from '../utils';
+import type { GenerationLogEntry } from './runner';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleGenAI } from '@google/genai';
 import { stripJsonFence } from '../utils';
@@ -190,7 +191,7 @@ export async function generateAndStoreImages(
   refinedPrompt: string,
   lessonId: string,
   supabase: SupabaseClient,
-  recordLog?: (entry: Record<string, unknown>) => Promise<void> | void
+  recordLog?: (entry: Omit<GenerationLogEntry, 'timestamp'>) => Promise<void> | void
 ): Promise<{ id: string; title: string; shortUrl: string; description: string }[]> {
   const startTime = Date.now();
 

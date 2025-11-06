@@ -4,30 +4,41 @@ import { createClient } from '@supabase/supabase-js';
 
 import {
   refinePromptWithSystemMessage,
-  generateJSXWithGemini,
+  generateJSXWithGemini as generateJSXService,
   validateJSXStatic,
   validateJSXRuntime,
   fixIssuesWithGemini,
 } from '../generation/services';
+import {
+  generateAndStoreImages,
+} from '../generation/imageGeneration';
 
 export {
   refinePromptWithSystemMessage,
-  generateJSXWithGemini,
   validateJSXStatic,
   validateJSXRuntime,
   fixIssuesWithGemini,
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY;
+const serviceRoleKey = process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY;
 const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'lessons';
 
 if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error('Supabase env vars not set');
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PRIVATE_SUPABASE_SECRET_KEY are required');
 }
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+/**
+ * Activity wrapper for JSX generation that accepts images
+ */
+export async function generateJSXWithGemini(
+  prompt: string,
+  images?: Array<{ id: string; title: string; shortUrl: string; description: string }>,
+): Promise<string> {
+  return generateJSXService(prompt, images);
+}
 
 export async function getLessonById(lessonId: string) {
   const { data, error } = await supabase
@@ -165,4 +176,13 @@ export async function storeJSXInSupabase(
   }
 
   return { publicUrl: publicUrlData.publicUrl, storagePath: filePath };
+}
+
+export async function generateImagesActivity(
+  outline: string,
+  refinedPrompt: string,
+  lessonId: string,
+) {
+  const supabaseClient = createClient(supabaseUrl!, serviceRoleKey!);
+  return generateAndStoreImages(outline, refinedPrompt, lessonId, supabaseClient);
 }

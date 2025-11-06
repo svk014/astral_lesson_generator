@@ -77,12 +77,14 @@ All variables are documented in `.env.example`. Core settings include:
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project REST endpoint |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public key for client-side data fetching |
-| `SUPABASE_SERVICE_ROLE_KEY` or `NEXT_PRIVATE_SUPABASE_SECRET_KEY` | Service role key used by server-side inserts/updates |
+| `NEXT_PRIVATE_SUPABASE_SECRET_KEY` | Service role key used by server-side inserts/updates |
 | `SUPABASE_STORAGE_BUCKET` | Storage bucket for JSX artifacts (defaults to `lessons`) |
 | `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, `TEMPORAL_TASK_QUEUE` | Temporal connection details for worker + client |
 | `TEMPORAL_API_KEY` | Optional Temporal Cloud API key |
 | `GEMINI_API_KEY` | API key for Google Generative AI |
 | `GEMINI_MODEL` | Gemini model identifier (defaults to `gemini-2.5-pro`) |
+| `OPENAI_API_KEY` | API key for OpenAI (used by Stagehand for runtime validation) |
+| `STAGEHAND_MODEL` | Stagehand model identifier (defaults to `gpt-4o-mini`) |
 
 ## Database migrations
 
@@ -116,9 +118,18 @@ bun run harness --outline "Explain stellar nucleosynthesis for grade 9 students.
 
 # Or point to a file
 bun run harness --outline-file sandbox/outline.md
+
+# Generate lesson with images (requires Supabase credentials)
+bun run harness --outline "Explain water cycle" --with-images
 ```
 
-Artifacts are written to `sandbox/output.jsx` and `sandbox/logs.json`. The harness uses the same shared generation runner as the Temporal workflow, runs Gemini calls, applies static + runtime validation, and stops before any Supabase or Temporal integration steps.
+Artifacts are written to `sandbox/output.jsx`, `sandbox/logs.json`, and `sandbox/images.json` (if `--with-images` is used). The harness uses the same shared generation runner as the Temporal workflow, runs Gemini calls, applies static + runtime validation, and optionally generates and stores images to Supabase Storage.
+
+**Image generation notes:**
+- Requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PRIVATE_SUPABASE_SECRET_KEY` (or `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in `.env.local`
+- Uses a hardcoded test lesson ID to avoid polluting your database
+- Images are uploaded to the configured `SUPABASE_STORAGE_BUCKET` and mapped to short URLs
+- Generated image metadata is saved to `sandbox/images.json`
 
 Structured responses: Gemini is instructed to return JSON matching `{ "jsx": "...", "notes": "optional" }`, which we verify with Zod before compiling. This catches malformed output early and keeps the retry loop short.
 

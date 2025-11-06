@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astral Lesson Generator - Architecture Overview</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Mono', 'Courier New', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #0d1b2a;
+            border: 2px solid;
+            border-image: linear-gradient(135deg, #00d4ff 0%, #7b2cbf 50%, #00d4ff 100%) 1;
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.15), inset 0 0 50px rgba(0, 212, 255, 0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(0deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        header {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(123, 44, 191, 0.1) 100%);
+            border-bottom: 2px solid;
+            border-image: linear-gradient(90deg, #00d4ff 0%, #7b2cbf 100%) 1;
+            color: #00d4ff;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+            letter-spacing: 2px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.8;
+            color: #b0e0e6;
+        }
+
+        .content {
+            padding: 40px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            color: #00d4ff;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid;
+            border-image: linear-gradient(90deg, #00d4ff 0%, #7b2cbf 50%, transparent 100%) 1;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .diagram-container {
+            background: rgba(10, 30, 50, 0.95);
+            border: 2px solid #00d4ff;
+            border-radius: 0;
+            clip-path: polygon(
+                20px 0,
+                100% 0,
+                100% calc(100% - 20px),
+                calc(100% - 20px) 100%,
+                0 100%,
+                0 20px
+            );
+            padding: 20px;
+            margin-bottom: 30px;
+            overflow-x: auto;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2), inset 0 0 30px rgba(0, 212, 255, 0.1);
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .tech-card {
+            background: rgba(10, 30, 50, 0.95);
+            border: 2px solid #00d4ff;
+            padding: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+
+        .tech-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+            animation: scanline 3s infinite;
+        }
+
+        @keyframes scanline {
+            0% {
+                left: -100%;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+
+        .tech-card:hover {
+            transform: translateY(-5px);
+            border-color: #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.2), inset 0 0 20px rgba(0, 212, 255, 0.05);
+        }
+
+        .tech-card h3 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .tech-card .why {
+            color: #b0e0e6;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .tech-card .badge {
+            display: inline-block;
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            padding: 4px 12px;
+            border: 1px solid rgba(0, 212, 255, 0.5);
+            border-radius: 0;
+            font-size: 0.85em;
+            margin-right: 5px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .flow-section {
+            background: rgba(10, 30, 50, 0.95);
+            border: 2px solid #00d4ff;
+            border-left: 4px solid #7b2cbf;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2), inset 0 0 20px rgba(0, 212, 255, 0.05);
+        }
+
+        .flow-step {
+            margin-bottom: 20px;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .flow-step::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            background: rgba(0, 212, 255, 0.3);
+            border: 2px solid #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5), inset 0 0 5px rgba(0, 212, 255, 0.3);
+        }
+
+        .flow-step h4 {
+            color: #00d4ff;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .flow-step p {
+            color: #b0e0e6;
+            line-height: 1.6;
+        }
+
+        .key-features {
+            background: rgba(123, 44, 191, 0.15);
+            border: 2px solid #7b2cbf;
+            border-left: 4px solid #7b2cbf;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 0 20px rgba(123, 44, 191, 0.2), inset 0 0 20px rgba(123, 44, 191, 0.05);
+        }
+
+        .key-features h3 {
+            color: #7b2cbf;
+            margin-bottom: 12px;
+            text-shadow: 0 0 10px rgba(123, 44, 191, 0.3);
+        }
+
+        .key-features ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .key-features li {
+            color: #b0e0e6;
+            padding: 6px 0;
+            padding-left: 24px;
+            position: relative;
+            line-height: 1.5;
+        }
+
+        .key-features li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: #7b2cbf;
+            font-weight: bold;
+        }
+
+        footer {
+            background: rgba(10, 14, 39, 0.9);
+            border-top: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 20px 40px;
+            text-align: center;
+            color: #7b8fa3;
+            font-size: 0.9em;
+            position: relative;
+            z-index: 2;
+        }
+
+        .technology-category {
+            margin-bottom: 25px;
+        }
+
+        .technology-category h4 {
+            color: #00d4ff;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        code {
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+            padding: 2px 6px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 0;
+            font-family: 'Space Mono', 'Courier New', monospace;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .stack-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .stack-comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Astral Lesson Generator</h1>
+            <p>Temporal-powered lesson generation with Supabase persistence & Gemini authoring</p>
+        </header>
+
+        <div class="content">
+            <!-- Architecture Diagram Section -->
+            <div class="section">
+                <h2>System Architecture</h2>
+                <div class="diagram-container">
+                    <div class="mermaid">
+                        graph TB
+                            UI["👤 Next.js Frontend<br/>(User submits outline)"]
+                            API["🔧 Next.js API<br/>(Creates lesson record)"]
+                            Temporal["⚙️ Temporal Workflow<br/>(Async orchestration)"]
+                            Gemini["🤖 Google Gemini<br/>(Generates JSX)"]
+                            Validate["✅ Validation<br/>(Zod + Stagehand)"]
+                            DB["💾 Supabase<br/>(PostgreSQL + Storage)"]
+
+                            UI -->|outline| API
+                            API -->|trigger| Temporal
+                            Temporal -->|call| Gemini
+                            Gemini -->|generated JSX| Temporal
+                            Temporal -->|validate| Validate
+                            Validate -->|persist| DB
+                            API -->|poll| DB
+                            UI -->|display| API
+
+                            style UI fill:#e3f2fd,stroke:#667eea,color:#000,stroke-width:2px
+                            style API fill:#f3e5f5,stroke:#764ba2,color:#000,stroke-width:2px
+                            style Temporal fill:#fff3e0,stroke:#ff9800,color:#000,stroke-width:2px
+                            style Gemini fill:#ffe0b2,stroke:#ff9800,color:#000,stroke-width:2px
+                            style Validate fill:#e8f5e9,stroke:#4caf50,color:#000,stroke-width:2px
+                            style DB fill:#f1f8e9,stroke:#4caf50,color:#000,stroke-width:2px
+                    </div>
+                </div>
+
+                <div class="key-features">
+                    <h3>📋 Key Architectural Patterns</h3>
+                    <ul>
+                        <li><strong>Async Workflow Orchestration:</strong> Temporal decouples UI from long-running generation tasks</li>
+                        <li><strong>Type-Safe Generation:</strong> Zod schemas validate AI-generated JSX before storage</li>
+                        <li><strong>Multi-Step Validation:</strong> Gemini for content generation, Stagehand for runtime testing</li>
+                        <li><strong>Comprehensive Logging:</strong> Each workflow step captured in PostgreSQL for debugging & observability</li>
+                        <li><strong>Scalable Design:</strong> Temporal workers can be independently scaled based on generation load</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Data Flow Section -->
+            <div class="section">
+                <h2>Lesson Generation Flow</h2>
+                <div class="flow-section">
+                    <div class="flow-step">
+                        <h4>1. Outline Submission</h4>
+                        <p>User submits a plain-language lesson outline via Next.js UI. Lesson record created in Supabase with status <code>pending</code>.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>2. Temporal Workflow Trigger</h4>
+                        <p>Next.js API invokes Temporal workflow with lesson ID and outline. Temporal marks lesson as <code>queued</code>, then <code>running</code>.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>3. Prompt Refinement</h4>
+                        <p>Temporal activity calls Gemini to refine the outline into a structured prompt with specific requirements (React component, dark theme, viewport sizing, no external dependencies).</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>4. 🖼️ Image Generation</h4>
+                        <p><strong>Image Description:</strong> Gemini analyzes the refined prompt and generates 2-3 image descriptions (what should be visually depicted, why it enhances learning).<br>
+                        <strong>Image Creation:</strong> Each description is sent to Gemini 2.5 Flash image model, generating educational illustrations. Images stored in Supabase Storage with short-hash URLs.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>5. JSX Generation with Images</h4>
+                        <p>Gemini generates JSX component with image references embedded. Context includes: refined prompt + generated image URLs. Receives JSON response with <code>{ jsx, notes }</code> structure. Response validated against Zod schema.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>6. ✅ Static Validation</h4>
+                        <p>TypeScript compiler checks JSX syntax, type safety, and JSX transform rules. Reports compile errors with line numbers and code snippets. If failed, stores error logs and triggers fix attempt.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>7. 🧪 Runtime Validation</h4>
+                        <p><strong>Transpilation:</strong> JSX compiled to JavaScript using TypeScript compiler, transpiled to CommonJS with React JSX transform.<br>
+                        <strong>Mounting:</strong> Component rendered on ephemeral Node.js HTTP server (localhost port).<br>
+                        <strong>Browser Testing:</strong> Stagehand (browser automation) opens rendered component, executes AI-generated test assertions (e.g., "verify lesson title is visible", "check all images loaded"). Uses GPT-4o-mini to intelligently extract content and validate behavior.<br>
+                        <strong>Result:</strong> Pass/fail with detailed error logs stored in PostgreSQL.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>8. Issue Remediation</h4>
+                        <p>If validation fails, errors (static or runtime) sent back to Gemini. Gemini regenerates fixed JSX. Max 3 retry attempts per lesson. Attempt count + details logged in <code>lesson_generation_logs</code> table.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>9. Persistence & Completion</h4>
+                        <p>Validated JSX stored in Supabase Storage (e.g., <code>lessons/lesson_123.jsx</code>). Lesson record updated: status → <code>completed</code>, JSX public URL + storage path stored. Generation logs flushed to PostgreSQL.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>10. UI Polling & Display</h4>
+                        <p>Front-end polls lesson status API. Once completed, retrieves JSX and images from Supabase. LessonViewer component renders JSX dynamically using React runtime (Babel standalone).</p>
+                    </div>
+                </div>
+
+                <div class="key-features" style="margin-top: 30px;">
+                    <h3 style="color: #7b2cbf; text-shadow: 0 0 10px rgba(123, 44, 191, 0.3);">🔍 Validation Deep Dive</h3>
+                    <div style="margin-top: 15px;">
+                        <h4 style="color: #00d4ff; margin-bottom: 10px;">Static Validation</h4>
+                        <p style="color: #b0e0e6; margin-bottom: 15px; line-height: 1.6;">
+                            TypeScript compiler validates JSX without execution. Catches syntax errors, missing props, type mismatches. Reports errors with exact line/column positions and code context for debugging.
+                        </p>
+                        <h4 style="color: #00d4ff; margin-bottom: 10px;">Runtime Validation</h4>
+                        <p style="color: #b0e0e6; line-height: 1.6;">
+                            Stagehand launches headless browser, loads rendered component, executes user-facing tests. GPT-4o-mini generates intelligent assertions (e.g., visual layout checks, button interactions). Validates that generated JSX actually renders and behaves correctly before deployment.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="key-features" style="margin-top: 20px; background: rgba(255, 193, 7, 0.1); border-left-color: #ffc107;">
+                    <h3 style="color: #ffc107; text-shadow: 0 0 10px rgba(255, 193, 7, 0.3);">📸 Image Generation Pipeline</h3>
+                    <ul style="color: #b0e0e6;">
+                        <li style="color: #b0e0e6;"><strong style="color: #ffc107;">Description Generation:</strong> Gemini 2.5 Flash analyzes lesson outline → outputs 2-3 structured image descriptions with visual details and learning context</li>
+                        <li style="color: #b0e0e6;"><strong style="color: #ffc107;">Image Creation:</strong> Gemini 2.5 Flash image model renders each description as educational illustration (professional quality, appropriate colors, labeled elements)</li>
+                        <li style="color: #b0e0e6;"><strong style="color: #ffc107;">Storage & CDN:</strong> Images stored in Supabase Storage (S3-compatible), assigned short-hash URLs for compact embedding in JSX</li>
+                        <li style="color: #b0e0e6;"><strong style="color: #ffc107;">JSX Integration:</strong> Image URLs passed to JSX generator, included as <code>&lt;img src="{shortUrl}" alt="{description}" /&gt;</code> tags</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Technology Stack Section -->
+            <div class="section">
+                <h2>Technology Stack & Rationale</h2>
+
+                <div class="technology-category">
+                    <h4>🎨 Frontend</h4>
+                    <div class="tech-grid">
+                        <div class="tech-card">
+                            <h3>Next.js 16 (App Router)</h3>
+                            <div class="why">
+                                <strong>Why:</strong> Built-in server components, file-based routing, API routes. Turbopack integration for fast dev builds. TypeScript support enables type-safe client-server communication.
+                            </div>
+                            <span class="badge">Framework</span>
+                        </div>
+                        <div class="tech-card">
+                            <h3>React 19 + Tailwind CSS</h3>
+                            <div class="why">
+                                <strong>Why:</strong> React for component composition, Tailwind for utility-first styling. Minimal dependencies for clean, maintainable UI code.
+                            </div>
+                            <span class="badge">UI</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="technology-category">
+                    <h4>🤖 AI & Language Models</h4>
+                    <div class="tech-grid">
+                        <div class="tech-card">
+                            <h3>Google Gemini API</h3>
+                            <div class="why">
+                                <strong>Why:</strong> State-of-the-art multimodal model (text & image). Supports structured JSON output for reliable schema parsing. <code>@google/generative-ai</code> library for direct API calls + <code>@google/genai</code> for advanced features.
+                            </div>
+                            <span class="badge">AI Model</span>
+                            <span class="badge">JSX Generation</span>
+                        </div>
+                        <div class="tech-card">
+                            <h3>Stagehand (OpenAI)</h3>
+                            <div class="why">
+                                <strong>Why:</strong> Browser automation framework for runtime validation. Executes generated JSX in real browser context to catch bugs before deployment. GPT-4o integration for intelligent test generation.
+                            </div>
+                            <span class="badge">Testing</span>
+                            <span class="badge">Validation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="technology-category">
+                    <h4>⚙️ Workflow Orchestration</h4>
+                    <div class="tech-grid">
+                        <div class="tech-card">
+                            <h3>Temporal.io</h3>
+                            <div class="why">
+                                <strong>Why:</strong> Fault-tolerant workflow engine separates long-running tasks from API request-response cycle. Automatic retry logic, dead letter queues, and activity timeouts. JavaScript SDK integrates natively with Node.js backend.
+                            </div>
+                            <span class="badge">Orchestration</span>
+                            <span class="badge">Async</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="technology-category">
+                    <h4>💾 Data & Storage</h4>
+                    <div class="tech-grid">
+                        <div class="tech-card">
+                            <h3>Supabase</h3>
+                            <div class="why">
+                                <strong>Why:</strong> Open-source Firebase alternative with PostgreSQL backend. Real-time subscriptions via websockets. Built-in object storage (S3-compatible) for JSX artifacts. Row-level security for multi-tenant support. SQL migrations version-controlled.
+                            </div>
+                            <span class="badge">Database</span>
+                            <span class="badge">Storage</span>
+                            <span class="badge">Auth</span>
+                        </div>
+                        <div class="tech-card">
+                            <h3>PostgreSQL</h3>
+                            <div class="why">
+                                <strong>Why:</strong> ACID transactions ensure data consistency during concurrent lesson updates. JSON columns for flexible metadata. Full-text search for lesson discovery. Migrations managed via Supabase CLI.
+                            </div>
+                            <span class="badge">Database</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="technology-category">
+                    <h4>✅ Validation & Type Safety</h4>
+                    <div class="tech-grid">
+                        <div class="tech-card">
+                            <h3>Zod</h3>
+                            <div class="why">
+                                <strong>Why:</strong> TypeScript-first schema validation library. Runtime type checking for Gemini API responses. Clear error messages for debugging schema mismatches. Composable validators for complex nested structures.
+                            </div>
+                            <span class="badge">Validation</span>
+                            <span class="badge">Type Safety</span>
+                        </div>
+                        <div class="tech-card">
+                            <h3>TypeScript</h3>
+                            <div class="why">
+                                <strong>Why:</strong> Static type checking catches bugs at compile time. Improved IDE autocomplete and refactoring tools. JSX component type safety ensures lesson components render correctly.
+                            </div>
+                            <span class="badge">Language</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="technology-category">
+                    <h4>📦 Build & Package Management</h4>
+                    <div class="tech-grid">
+                        <div class="tech-card">
+                            <h3>Bun</h3>
+                            <div class="why">
+                                <strong>Why:</strong> Fast all-in-one JavaScript runtime replacing Node.js + npm. Native TypeScript support in scripts without <code>tsx</code> transpilation. Built-in package manager with lock file. 2-3x faster builds than traditional npm + Node.
+                            </div>
+                            <span class="badge">Runtime</span>
+                            <span class="badge">Package Manager</span>
+                        </div>
+                        <div class="tech-card">
+                            <h3>tsx</h3>
+                            <div class="why">
+                                <strong>Why:</strong> TypeScript executor for Node.js, used for CLI scripts (harness, worker). Allows running <code>.ts</code> files directly without manual compilation.
+                            </div>
+                            <span class="badge">Build Tool</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="technology-category">
+                    <h4>🔨 Development Tools</h4>
+                    <div class="tech-grid">
+                        <div class="tech-card">
+                            <h3>ESLint</h3>
+                            <div class="why">
+                                <strong>Why:</strong> Static code analysis catches common errors and style inconsistencies. ESLint config for Next.js enforces best practices.
+                            </div>
+                            <span class="badge">Linter</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="section">
+                <h2>Why This Stack?</h2>
+                <p style="color: #666; margin-bottom: 20px;">Compared to alternative approaches:</p>
+                
+                <div class="stack-comparison">
+                    <div style="background: rgba(0, 100, 150, 0.2); padding: 20px; border: 1px solid rgba(0, 212, 255, 0.3); border-left: 3px solid #d32f2f;">
+                        <h4 style="color: #ff6b6b; margin-bottom: 15px;">❌ Without Temporal</h4>
+                        <ul style="color: #b0e0e6; line-height: 1.8; list-style: none; margin-left: 0;">
+                            <li style="padding-left: 20px; position: relative; margin-bottom: 8px;">
+                                <span style="position: absolute; left: 0; color: #ff6b6b;">▸</span>
+                                Long Gemini API calls block HTTP requests (timeout risk)
+                            </li>
+                            <li style="padding-left: 20px; position: relative; margin-bottom: 8px;">
+                                <span style="position: absolute; left: 0; color: #ff6b6b;">▸</span>
+                                No built-in retry logic for failed generations
+                            </li>
+                            <li style="padding-left: 20px; position: relative; margin-bottom: 8px;">
+                                <span style="position: absolute; left: 0; color: #ff6b6b;">▸</span>
+                                Difficult to resume interrupted workflows
+                            </li>
+                            <li style="padding-left: 20px; position: relative;">
+                                <span style="position: absolute; left: 0; color: #ff6b6b;">▸</span>
+                                Hard to monitor complex multi-step processes
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(0, 150, 100, 0.2); padding: 20px; border: 1px solid rgba(0, 212, 255, 0.3); border-left: 3px solid #4caf50;">
+                        <h4 style="color: #69f0ae; margin-bottom: 15px;">✅ With Temporal</h4>
+                        <ul style="color: #b0e0e6; line-height: 1.8; list-style: none; margin-left: 0;">
+                            <li style="padding-left: 20px; position: relative; margin-bottom: 8px;">
+                                <span style="position: absolute; left: 0; color: #69f0ae;">▸</span>
+                                Decoupled async workflows return immediately
+                            </li>
+                            <li style="padding-left: 20px; position: relative; margin-bottom: 8px;">
+                                <span style="position: absolute; left: 0; color: #69f0ae;">▸</span>
+                                Automatic exponential backoff + dead letter queues
+                            </li>
+                            <li style="padding-left: 20px; position: relative; margin-bottom: 8px;">
+                                <span style="position: absolute; left: 0; color: #69f0ae;">▸</span>
+                                Resume from checkpoints on failure
+                            </li>
+                            <li style="padding-left: 20px; position: relative;">
+                                <span style="position: absolute; left: 0; color: #69f0ae;">▸</span>
+                                Full execution history + audit trail
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="key-features" style="margin-top: 20px;">
+                    <h3>🎯 Architectural Advantages</h3>
+                    <ul>
+                        <li><strong>Scalability:</strong> Temporal workers can be horizontal auto-scaled based on queue depth</li>
+                        <li><strong>Reliability:</strong> Workflows survive server restarts, network outages due to durability guarantees</li>
+                        <li><strong>Developer Experience:</strong> Write async logic as synchronous-looking code (workflow definition)</li>
+                        <li><strong>Observability:</strong> Built-in metrics, tracing, and complete workflow history</li>
+                        <li><strong>Cost Efficiency:</strong> Temporal Cloud pricing per-step, not per-server, suits bursty generation workloads</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Environment Setup -->
+            <div class="section">
+                <h2>Key Files & Configuration</h2>
+                <div class="flow-section">
+                    <div class="flow-step">
+                        <h4>🔧 <code>lib/temporal/workflows.ts</code></h4>
+                        <p>Defines the lesson generation workflow: outline → Gemini call → validation → storage. Activities (Gemini call, validation, logging) are invoked here.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>🤖 <code>lib/gemini/client.ts</code></h4>
+                        <p>Wraps Gemini API with typed prompts, response parsing, and Zod schema validation.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>✅ <code>lib/generation/runtimeValidation.ts</code></h4>
+                        <p>Uses Stagehand to execute generated JSX in a browser, validates component rendering and interactivity.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>📊 <code>scripts/worker.ts</code></h4>
+                        <p>Temporal Worker process that polls task queue and executes workflow activities. Runs separately from Next.js server.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>🧪 <code>scripts/generation-harness.ts</code></h4>
+                        <p>Local CLI tool for rapid iteration on prompts without touching Temporal or the database. Useful for debugging Gemini outputs.</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>🗄️ <code>supabase/migrations/</code></h4>
+                        <p>SQL migration files version-controlled and applied via <code>supabase db push</code>. Creates <code>lessons</code> and <code>lesson_generation_logs</code> tables.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Commands Section -->
+            <div class="section">
+                <h2>Running the System</h2>
+                <div class="flow-section">
+                    <div class="flow-step">
+                        <h4>Start Development Server</h4>
+                        <p><code>bun run dev</code> — Runs Next.js on port 3000 with Turbopack fast refresh</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>Start Temporal Worker</h4>
+                        <p><code>bun run worker</code> — Polls Temporal task queue and executes workflow activities</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>Local Iteration (No Temporal)</h4>
+                        <p><code>bun run harness</code> — Test prompt → JSX generation locally without full workflow orchestration</p>
+                    </div>
+                    <div class="flow-step">
+                        <h4>Build for Production</h4>
+                        <p><code>bun run build</code> — Compiles Next.js and TypeScript, outputs optimized artifacts</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="section">
+                <div class="key-features" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(123, 44, 191, 0.15) 100%); border: 1px solid; border-image: linear-gradient(90deg, #00d4ff 0%, #7b2cbf 100%) 1;">
+                    <h3 style="color: #00d4ff; text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);">💡 Summary</h3>
+                    <p style="color: #b0e0e6; margin-bottom: 12px;">
+                        <strong style="color: #00d4ff;">Astral Lesson Generator</strong> combines modern AI, distributed workflows, and type-safe development:
+                    </p>
+                    <ul style="color: #b0e0e6;">
+                        <li><strong>AI-Native:</strong> Google Gemini generates semantic, JSX components from plain-text outlines</li>
+                        <li><strong>Reliable & Scalable:</strong> Temporal decouples UI from long-running tasks with built-in resilience</li>
+                        <li><strong>Type-Safe End-to-End:</strong> TypeScript + Zod + Next.js App Router ensure compile-time and runtime safety</li>
+                        <li><strong>Observable:</strong> Comprehensive logging in PostgreSQL tracks every generation step for debugging</li>
+                        <li><strong>Developer-Friendly:</strong> Local harness for rapid iteration, Tailwind for UI, Bun for fast builds</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Astral Lesson Generator Architecture Overview • Generated with Mermaid Diagrams</p>
+            <p style="margin-top: 10px; font-size: 0.85em; color: #999;">Built with Next.js 16, Temporal.io, Supabase & Google Gemini API</p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            securityLevel: 'loose',
+            themeVariables: {
+                'primaryColor': '#000000',
+                'primaryTextColor': '#ffffff',
+                'primaryBorderColor': '#ffffff',
+                'primaryStrokeWidth': '3px',
+                'secondaryColor': '#000000',
+                'secondaryTextColor': '#ffffff',
+                'secondaryBorderColor': '#ffffff',
+                'secondaryStrokeWidth': '3px',
+                'tertiaryColor': '#000000',
+                'tertiaryTextColor': '#ffffff',
+                'tertiaryBorderColor': '#ffffff',
+                'tertiaryStrokeWidth': '3px',
+                'tertiaryStrokeColor': '#ffffff',
+                'noteBkgColor': '#000000',
+                'noteBorderColor': '#ffffff',
+                'noteTextColor': '#ffffff',
+                'fontSize': '14px',
+                'fontFamily': 'Space Mono, Courier New, monospace',
+                'lineColor': '#00d4ff',
+                'arrowMarkerAbsolute': true
+            },
+            flowchart: {
+                'htmlLabels': true,
+                'useMaxWidth': true,
+                'nodeSpacing': 50,
+                'rankSpacing': 50
+            }
+        });
+        mermaid.contentLoaded();
+    </script>
+</body>
+</html>

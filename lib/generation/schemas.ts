@@ -80,3 +80,16 @@ export type RuntimeTestPlan = z.infer<typeof runtimeTestPlanSchema>;
 export type JsxResponse = z.infer<typeof jsxResponseSchema>;
 export type ValidationResult = z.infer<typeof validationResultSchema>;
 export type RuntimeValidationResult = z.infer<typeof runtimeValidationResultSchema>;
+
+// Image generation schemas
+export const generatedImageSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  url: z.string().url(),
+  context: z.string(),
+});
+
+export const generatedImagesSchema = z.array(generatedImageSchema);
+
+export type GeneratedImage = z.infer<typeof generatedImageSchema>;
+export type GeneratedImages = z.infer<typeof generatedImagesSchema>;

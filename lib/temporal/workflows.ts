@@ -91,7 +91,7 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
         await activities.markLessonStep(lessonId, 'generating_jsx');
         return activities.refinePromptWithSystemMessage(value);
       },
-      generateImages: async (outline, refinedPrompt, lessonId, recordLog) => {
+      generateImages: async (outline, refinedPrompt, lessonId) => {
         await activities.markLessonStep(lessonId || '', 'generating_images');
         return activities.generateImagesActivity(outline, refinedPrompt, lessonId || '');
       },

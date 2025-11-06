@@ -1,5 +1,4 @@
 import * as ts from 'typescript';
-import { z } from 'zod';
 
 import { stripJsonFence } from '../utils';
 import { geminiModel } from '../gemini/client';

@@ -9,10 +9,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as ts from 'typescript';
 import { z } from 'zod';
 
-import { retryWithExponentialBackoff, stripJsonFence, sleep } from '../utils';
+import { retryWithExponentialBackoff, stripJsonFence } from '../utils';
 import { geminiModel } from '../gemini/client';
 import {
-  runtimeAssertionSchema,
   runtimeTestPlanSchema,
   runtimeValidationResultSchema,
   type RuntimeAssertion,

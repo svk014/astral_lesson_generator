@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateShortHash } from '../utils';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleGenAI } from '@google/genai';
@@ -19,8 +20,7 @@ export interface ImageDescription {
 }
 
 export async function generateImageDescriptions(
-  outline: string,
-  refinedPrompt: string
+  outline: string
 ): Promise<ImageDescription[]> {
   const prompt = `You are an educational content designer. For this lesson outline, suggest 2-3 images that would significantly enhance student understanding.
 
@@ -136,7 +136,7 @@ Create a clear, professional educational image suitable for students. Use good c
 export async function uploadImageToSupabase(
   image: GeneratedImage,
   lessonId: string,
-  supabase: any
+  supabase: SupabaseClient
 ): Promise<string> {
   // Convert base64 to buffer
   const buffer = Buffer.from(image.imageData, 'base64');
@@ -163,7 +163,7 @@ export async function storeImageMapping(
   title: string,
   description: string,
   storagePath: string,
-  supabase: any
+  supabase: SupabaseClient
 ): Promise<{ shortHash: string; shortUrl: string }> {
   const shortHash = generateShortHash();
   const shortUrl = `/api/images/${shortHash}`;
@@ -189,8 +189,8 @@ export async function generateAndStoreImages(
   outline: string,
   refinedPrompt: string,
   lessonId: string,
-  supabase: any,
-  recordLog?: (entry: any) => Promise<void> | void
+  supabase: SupabaseClient,
+  recordLog?: (entry: Record<string, unknown>) => Promise<void> | void
 ): Promise<{ id: string; title: string; shortUrl: string; description: string }[]> {
   const startTime = Date.now();
 
@@ -204,7 +204,7 @@ export async function generateAndStoreImages(
       attempt: 0,
     });
 
-    const descriptions = await generateImageDescriptions(outline, refinedPrompt);
+    const descriptions = await generateImageDescriptions(outline);
     console.log(`[ImageGen] ✓ Step 1 complete: Generated ${descriptions.length} image descriptions`);
     await recordLog?.({
       step: 'image_generation_step_1_descriptions',

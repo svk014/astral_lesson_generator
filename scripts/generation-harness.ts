@@ -76,7 +76,7 @@ async function main() {
 
   // Create Supabase client if generating images
   let supabaseClient: ReturnType<typeof createClient> | null = null;
-  const generatedImages: any[] = [];
+  const generatedImages: { id: string; title: string; shortUrl: string; description: string }[] = [];
 
   if (options.generateImages) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

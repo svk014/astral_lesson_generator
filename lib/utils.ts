@@ -1,8 +1,13 @@
+import { randomUUID, createHash } from 'node:crypto';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export function generateShortHash(): string {
+  return createHash('sha256').update(randomUUID()).digest('hex').substring(0, 12);
 }
 
 export function stripJsonFence(raw: string): string {

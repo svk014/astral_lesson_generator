@@ -1,10 +1,8 @@
 import { Buffer } from 'node:buffer';
-import { randomUUID } from 'node:crypto';
-import { createHash } from 'node:crypto';
+import { generateShortHash } from '../utils';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleGenAI } from '@google/genai';
 import { stripJsonFence } from '../utils';
-import fetch from 'node-fetch';
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) throw new Error('GEMINI_API_KEY not set');
@@ -20,9 +18,6 @@ export interface ImageDescription {
   context: string;
 }
 
-/**
- * Ask Gemini to describe what images would enhance this lesson
- */
 export async function generateImageDescriptions(
   outline: string,
   refinedPrompt: string
@@ -75,11 +70,6 @@ export interface GeneratedImage {
   description?: string; // Gemini's description of generated image
 }
 
-/**
- * Generate images using Gemini 2.5 Flash Image model
- * Returns base64-encoded images for storage
- * Cost: Token-based (~1290 tokens per image)
- */
 export async function generateImagesWithGemini(
   descriptions: ImageDescription[]
 ): Promise<GeneratedImage[]> {
@@ -143,17 +133,6 @@ Create a clear, professional educational image suitable for students. Use good c
   return images;
 }
 
-/**
- * Generate short hash for image URL mapping
- */
-export function generateShortHash(): string {
-  return createHash('sha256').update(randomUUID()).digest('hex').substring(0, 12);
-}
-
-/**
- * Upload generated image to Supabase Storage
- * Returns storage path (not public URL - we'll use short hash API instead)
- */
 export async function uploadImageToSupabase(
   image: GeneratedImage,
   lessonId: string,
@@ -179,10 +158,6 @@ export async function uploadImageToSupabase(
   return path;
 }
 
-/**
- * Store image mapping in Supabase
- * Creates short hash → storage path mapping
- */
 export async function storeImageMapping(
   lessonId: string,
   title: string,
@@ -210,15 +185,6 @@ export async function storeImageMapping(
   return { shortHash, shortUrl };
 }
 
-/**
- * Process full image generation pipeline (Option 2 - with image descriptions):
- * 1. Ask Gemini what images would help → Get generation prompts
- * 2. Generate images with Imagen 4 Fast
- * 3. Ask Gemini to describe generated images → Get alt text
- * 4. Upload images to Supabase Storage
- * 5. Store short hash mappings in DB
- * 6. Return short URLs + descriptions for JSX generation
- */
 export async function generateAndStoreImages(
   outline: string,
   refinedPrompt: string,

@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { stripJsonFence } from '../utils';
 import fetch from 'node-fetch';
 
@@ -10,6 +11,7 @@ if (!apiKey) throw new Error('GEMINI_API_KEY not set');
 
 const gemini = new GoogleGenerativeAI(apiKey);
 const textModel = gemini.getGenerativeModel({ model: 'gemini-2.5-flash' });
+const imageAi = new GoogleGenAI({ apiKey });
 
 export interface ImageDescription {
   id: string;
@@ -93,36 +95,19 @@ Context: ${desc.context}
 Create a clear, professional educational image suitable for students. Use good composition, appropriate colors, and include any specified text or labels.`;
 
     try {
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey!,
-        } as Record<string, string>,
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-        }),
+      const response = await imageAi.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: prompt,
       });
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to generate image: ${response.status} ${error}`);
+      if (!response.candidates || !response.candidates[0]) {
+        throw new Error(`Failed to generate image for ${desc.id}: no candidates in response`);
       }
 
-      const data = (await response.json()) as any;
-      
       // Find both image and text parts in the response
       let imagePart = null;
       let textPart = null;
-      const parts = data.candidates?.[0]?.content?.parts || [];
+      const parts = response.candidates[0].content?.parts || [];
       for (const part of parts) {
         if (part.inlineData?.data && !imagePart) {
           imagePart = part;
@@ -156,42 +141,6 @@ Create a clear, professional educational image suitable for students. Use good c
   }
 
   return images;
-}
-
-/**
- * Ask Gemini to describe what's in the generated image
- * Used for alt text and display descriptions
- */
-export async function describeGeneratedImage(
-  imageData: string,
-  mimeType: string
-): Promise<string> {
-  const prompt = `Describe this educational image in 1-2 concise sentences suitable for alt text and student learning. 
-Focus on what's shown and its educational value. Be specific but brief.`;
-
-  const result = await textModel.generateContent({
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { text: prompt },
-          {
-            inlineData: {
-              mimeType,
-              data: imageData,
-            },
-          },
-        ],
-      },
-    ],
-  });
-
-  const raw = result?.response?.text();
-  if (!raw) {
-    throw new Error('Gemini did not return image description');
-  }
-
-  return raw.trim();
 }
 
 /**

@@ -1,16 +1,4 @@
-/**
- * Centralized environment variable validation and configuration.
- * All environment variables are validated at startup to fail fast if critical config is missing.
- * This module should be imported early in the application lifecycle.
- */
-
-/**
- * Helper to require an environment variable and throw an error if missing.
- * @param name The environment variable name (for error messages)
- * @param value The value to validate
- * @returns The validated value
- * @throws Error if value is undefined or empty string
- */
+// Environment variable validation and configuration helpers
 function requireEnv(name: string, value: string | undefined): string {
 	if (!value || value.trim() === '') {
 		throw new Error(`Environment variable "${name}" is required but not set or empty`);
@@ -18,13 +6,6 @@ function requireEnv(name: string, value: string | undefined): string {
 	return value.trim();
 }
 
-/**
- * Helper to optionally get an environment variable with a fallback default.
- * @param name The environment variable name (for logging)
- * @param value The value to check
- * @param defaultValue The fallback value if not provided
- * @returns The value or default
- */
 function optionalEnv(name: string, value: string | undefined, defaultValue: string): string {
 	if (!value || value.trim() === '') {
 		console.debug(`[Env] Using default for "${name}": ${defaultValue}`);
@@ -33,24 +14,11 @@ function optionalEnv(name: string, value: string | undefined, defaultValue: stri
 	return value.trim();
 }
 
-/**
- * Helper to parse boolean environment variables.
- * @param value The value to parse (should be "true" or "false")
- * @param defaultValue The fallback value if not provided
- * @returns The parsed boolean
- */
 function booleanEnv(value: string | undefined, defaultValue: boolean): boolean {
 	if (value === undefined) return defaultValue;
 	return value.toLowerCase() === 'true';
 }
 
-/**
- * Validates that a model is in the supported list.
- * @param model The model to validate
- * @param supported Set of supported model names
- * @param defaultModel The fallback model if invalid
- * @returns The valid model name
- */
 function validateModel(
 	model: string | undefined,
 	supported: Set<string>,
@@ -72,32 +40,24 @@ function validateModel(
 	return defaultModel;
 }
 
-// ============================================================================
-// SUPABASE CONFIGURATION
-// ============================================================================
-
+// Supabase configuration
 const SUPABASE_URL = requireEnv(
 	'NEXT_PUBLIC_SUPABASE_URL',
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
 );
 
-// Server-side operations use service role key (private, must not be exposed to client)
 const SUPABASE_SERVICE_KEY = requireEnv(
 	'NEXT_PRIVATE_SUPABASE_SECRET_KEY',
 	process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY,
 );
 
-// Storage bucket for lesson artifacts (JSX files, images, etc.)
 const SUPABASE_STORAGE_BUCKET = optionalEnv(
 	'SUPABASE_STORAGE_BUCKET',
 	process.env.SUPABASE_STORAGE_BUCKET,
 	'lessons',
 );
 
-// ============================================================================
-// TEMPORAL WORKFLOW CONFIGURATION
-// ============================================================================
-
+// Temporal configuration
 const TEMPORAL_ADDRESS = requireEnv(
 	'TEMPORAL_ADDRESS',
 	process.env.TEMPORAL_ADDRESS,
@@ -118,19 +78,13 @@ const TEMPORAL_WORKFLOW_TYPE = requireEnv(
 	process.env.TEMPORAL_WORKFLOW_TYPE,
 );
 
-// Optional: API key for Temporal Cloud authentication
 const TEMPORAL_API_KEY = process.env.TEMPORAL_API_KEY;
-
-// Optional: Disable TLS for local development
 const TEMPORAL_TLS_DISABLED = booleanEnv(
 	process.env.TEMPORAL_TLS_DISABLED,
 	false,
 );
 
-// ============================================================================
-// GEMINI / GOOGLE GENERATIVE AI CONFIGURATION
-// ============================================================================
-
+// Gemini configuration
 const GEMINI_API_KEY = requireEnv(
 	'GEMINI_API_KEY',
 	process.env.GEMINI_API_KEY,
@@ -149,11 +103,7 @@ const GEMINI_MODEL = validateModel(
 	DEFAULT_GEMINI_MODEL,
 );
 
-// ============================================================================
-// STAGEHAND / RUNTIME VALIDATION CONFIGURATION
-// ============================================================================
-
-// OpenAI API key is required for Stagehand runtime validation
+// OpenAI / Stagehand configuration
 const OPENAI_API_KEY = requireEnv(
 	'OPENAI_API_KEY',
 	process.env.OPENAI_API_KEY,
@@ -173,24 +123,14 @@ const STAGEHAND_MODEL = validateModel(
 	DEFAULT_STAGEHAND_MODEL,
 );
 
-// ============================================================================
-// APPLICATION CONFIGURATION
-// ============================================================================
-
+// Application configuration
 const NEXT_PUBLIC_SITE_URL = optionalEnv(
 	'NEXT_PUBLIC_SITE_URL',
 	process.env.NEXT_PUBLIC_SITE_URL,
 	'http://localhost:3000',
 );
 
-// ============================================================================
-// EXPORT VALIDATED ENV CONFIGURATION
-// ============================================================================
-
-/**
- * Centralized, type-safe environment configuration.
- * All values are validated at module load time.
- */
+// Centralized, type-safe environment configuration (validated at module load time)
 export const env = {
 	// Supabase
 	supabase: {
@@ -232,10 +172,6 @@ export const env = {
 	},
 } as const;
 
-/**
- * Log which environment we're running in (useful for debugging).
- * Should be called early in application startup.
- */
 export function logEnvConfiguration(): void {
 	console.log('[Env] Configuration loaded successfully:', {
 		supabase: {

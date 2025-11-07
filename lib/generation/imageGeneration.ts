@@ -1,17 +1,15 @@
 import { Buffer } from 'node:buffer';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { env } from '../env';
 import { generateShortHash } from '../utils';
 import type { GenerationLogEntry } from './runner';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleGenAI } from '@google/genai';
 import { stripJsonFence } from '../utils';
 
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) throw new Error('GEMINI_API_KEY not set');
-
-const gemini = new GoogleGenerativeAI(apiKey);
+const gemini = new GoogleGenerativeAI(env.gemini.apiKey);
 const textModel = gemini.getGenerativeModel({ model: 'gemini-2.5-flash' });
-const imageAi = new GoogleGenAI({ apiKey });
+const imageAi = new GoogleGenAI({ apiKey: env.gemini.apiKey });
 
 export interface ImageDescription {
   id: string;

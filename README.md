@@ -76,7 +76,6 @@ All variables are documented in `.env.example`. Core settings include:
 | Variable | Purpose |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project REST endpoint |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public key for client-side data fetching |
 | `NEXT_PRIVATE_SUPABASE_SECRET_KEY` | Service role key used by server-side inserts/updates |
 | `SUPABASE_STORAGE_BUCKET` | Storage bucket for JSX artifacts (defaults to `lessons`) |
 | `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, `TEMPORAL_TASK_QUEUE` | Temporal connection details for worker + client |
@@ -126,7 +125,7 @@ bun run harness --outline "Explain water cycle" --with-images
 Artifacts are written to `sandbox/output.jsx`, `sandbox/logs.json`, and `sandbox/images.json` (if `--with-images` is used). The harness uses the same shared generation runner as the Temporal workflow, runs Gemini calls, applies static + runtime validation, and optionally generates and stores images to Supabase Storage.
 
 **Image generation notes:**
-- Requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PRIVATE_SUPABASE_SECRET_KEY` (or `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in `.env.local`
+- Requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PRIVATE_SUPABASE_SECRET_KEY` in `.env.local`
 - Uses a hardcoded test lesson ID to avoid polluting your database
 - Images are uploaded to the configured `SUPABASE_STORAGE_BUCKET` and mapped to short URLs
 - Generated image metadata is saved to `sandbox/images.json`

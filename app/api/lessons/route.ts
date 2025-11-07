@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getServiceSupabaseClient } from '@/lib/supabase/server';
 import { getTemporalClient } from '@/lib/temporal/client';
+import { env } from '@/lib/env';
 
 type LessonRow = {
   id: string;
@@ -15,14 +16,6 @@ type LessonRow = {
   created_at: string;
   updated_at: string;
 };
-
-function requireEnv(name: string, value: string | undefined) {
-  if (!value) {
-    throw new Error(`${name} is required`);
-  }
-
-  return value;
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -74,8 +67,8 @@ export async function POST(request: Request) {
   const normalizedOutline = outline.trim();
 
   const supabase = getServiceSupabaseClient();
-  const taskQueue = requireEnv('TEMPORAL_TASK_QUEUE', process.env.TEMPORAL_TASK_QUEUE);
-  const workflowType = requireEnv('TEMPORAL_WORKFLOW_TYPE', process.env.TEMPORAL_WORKFLOW_TYPE);
+  const taskQueue = env.temporal.taskQueue;
+  const workflowType = env.temporal.workflowType;
 
   let lesson: LessonRow | null = null;
 

@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { env } from '../env';
 
 import {
   refinePromptWithSystemMessage,
@@ -20,15 +21,7 @@ export {
   fixIssuesWithGemini,
 };
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.NEXT_PRIVATE_SUPABASE_SECRET_KEY;
-const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'lessons';
-
-if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PRIVATE_SUPABASE_SECRET_KEY are required');
-}
-
-const supabase = createClient(supabaseUrl, serviceRoleKey);
+const supabase = createClient(env.supabase.url, env.supabase.serviceKey);
 
 /**
  * Activity wrapper for JSX generation that accepts images
@@ -160,7 +153,7 @@ export async function storeJSXInSupabase(
   const buffer = Buffer.from(jsx, 'utf-8');
 
   const { error: uploadError } = await supabase.storage
-    .from(storageBucket)
+    .from(env.supabase.storageBucket)
     .upload(filePath, buffer, { upsert: true, contentType: 'text/jsx' });
 
   if (uploadError) {
@@ -168,7 +161,7 @@ export async function storeJSXInSupabase(
   }
 
   const { data: publicUrlData } = supabase.storage
-    .from(storageBucket)
+    .from(env.supabase.storageBucket)
     .getPublicUrl(filePath);
 
   if (!publicUrlData.publicUrl) {
@@ -183,6 +176,6 @@ export async function generateImagesActivity(
   refinedPrompt: string,
   lessonId: string,
 ) {
-  const supabaseClient = createClient(supabaseUrl!, serviceRoleKey!);
+  const supabaseClient = createClient(env.supabase.url, env.supabase.serviceKey);
   return generateAndStoreImages(outline, refinedPrompt, lessonId, supabaseClient);
 }

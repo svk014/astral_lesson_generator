@@ -1,4 +1,5 @@
 import { Connection, WorkflowClient, type Metadata } from '@temporalio/client';
+import { env } from '../env';
 
 let temporalConnection: Connection | null = null;
 let temporalClient: WorkflowClient | null = null;
@@ -18,26 +19,12 @@ export async function getTemporalConnection() {
     return temporalConnection;
   }
 
-  const address = process.env.TEMPORAL_ADDRESS;
-  const namespace = process.env.TEMPORAL_NAMESPACE;
-  const apiKey = process.env.TEMPORAL_API_KEY;
-  const tlsDisabled = process.env.TEMPORAL_TLS_DISABLED === 'true';
-
-  console.log('Temporal address:', address);
-  console.log('Temporal namespace:', namespace);
-
-  if (!address) {
-    throw new Error('TEMPORAL_ADDRESS is required');
-  }
-
-  if (!namespace) {
-    throw new Error('TEMPORAL_NAMESPACE is required');
-  }
+  console.log('[Temporal] Connecting to:', env.temporal.address, 'namespace:', env.temporal.namespace);
 
   temporalConnection = await Connection.connect({
-    address,
-    tls: tlsDisabled ? undefined : {},
-    metadata: createMetadata(apiKey),
+    address: env.temporal.address,
+    tls: env.temporal.tlsDisabled ? undefined : {},
+    metadata: createMetadata(env.temporal.apiKey),
   });
 
   return temporalConnection;
@@ -49,9 +36,8 @@ export async function getTemporalClient() {
   }
 
   const connection = await getTemporalConnection();
-  const namespace = process.env.TEMPORAL_NAMESPACE!;
 
-  temporalClient = new WorkflowClient({ connection, namespace });
+  temporalClient = new WorkflowClient({ connection, namespace: env.temporal.namespace });
 
   return temporalClient;
 }

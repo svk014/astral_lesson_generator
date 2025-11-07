@@ -1,6 +1,5 @@
 import { getServiceSupabaseClient } from '@/lib/supabase/server';
-
-const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? 'lessons';
+import { env } from '@/lib/env';
 
 type LessonRecord = {
   id: string;
@@ -28,7 +27,7 @@ async function downloadJsxFromStorage(
   }
 
   const { data: file, error } = await supabase.storage
-    .from(storageBucket)
+    .from(env.supabase.storageBucket)
     .download(lesson.jsx_storage_path);
 
   if (error) {

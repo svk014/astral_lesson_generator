@@ -1,27 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { env } from "../env";
 import { retryWithExponentialBackoff } from "../utils";
 
-const apiKey = process.env.GEMINI_API_KEY;
-const DEFAULT_MODEL = "gemini-2.5-flash";
-const supportedModels = new Set([
-	"gemini-2.5-pro",
-    "gemini-2.5-flash",
-]);
-
-if (!apiKey) throw new Error("GEMINI_API_KEY not set");
-
-const requestedModel = process.env.GEMINI_MODEL?.trim();
-const model = requestedModel && supportedModels.has(requestedModel)
-	? requestedModel
-	: DEFAULT_MODEL;
-
-if (requestedModel && model !== requestedModel) {
-	console.warn(
-		`[Gemini] Unsupported model "${requestedModel}". Falling back to "${model}". Available options: ${[...supportedModels]
-			.map((m) => `"${m}"`)
-			.join(", ")}.`,
-	);
-}
+const DEFAULT_MODEL = env.gemini.model;
 
 function isRetryableGeminiError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
@@ -37,9 +18,9 @@ function isRetryableGeminiError(error: unknown): boolean {
 	);
 }
 
-const gemini = new GoogleGenerativeAI(apiKey);
-const baseModel = gemini.getGenerativeModel({ model });
-export const resolvedGeminiModel = model;
+const gemini = new GoogleGenerativeAI(env.gemini.apiKey);
+const baseModel = gemini.getGenerativeModel({ model: DEFAULT_MODEL });
+export const resolvedGeminiModel = DEFAULT_MODEL;
 
 /**
  * Wrapper around Gemini model with automatic retry logic for transient failures

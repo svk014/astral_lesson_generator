@@ -9,6 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as ts from 'typescript';
 import { z } from 'zod';
 
+import { env } from '../env';
 import { retryWithExponentialBackoff, stripJsonFence } from '../utils';
 import { geminiModel } from '../gemini/client';
 import {
@@ -23,7 +24,6 @@ export const generationConfig = {
   responseMimeType: 'application/json',
 };
 
-const DEFAULT_STAGEHAND_MODEL = 'gpt-4o-mini';
 const RUNTIME_TEMPLATE_PLACEHOLDER = '{{CONTENT}}';
 const RUNTIME_TEMPLATE_PATH = path.resolve(
   process.cwd(),
@@ -276,17 +276,12 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
 
     previewServer = await startRuntimePreviewServer(html);
 
-    const stagehandModelOverride = process.env.STAGEHAND_MODEL?.trim();
-    const stagehandModelName = stagehandModelOverride && stagehandModelOverride.length > 0
-      ? stagehandModelOverride
-      : DEFAULT_STAGEHAND_MODEL;
-
     stagehand = new Stagehand({
       env: 'LOCAL',
       cacheDir: path.resolve(process.cwd(), '.stagehand-cache'),
       model: {
-        modelName: stagehandModelName,
-        apiKey: process.env.OPENAI_API_KEY,
+        modelName: env.stagehand.model,
+        apiKey: env.openai.apiKey,
       }
     });
     await stagehand.init();

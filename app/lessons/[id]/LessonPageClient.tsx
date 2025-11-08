@@ -8,11 +8,11 @@ type LessonPageClientProps = {
     outline: string;
     status?: string;
   };
-  jsx: string | null;
+  compiledCode: string | null;
 };
 
-export function LessonPageClient({ lesson, jsx }: LessonPageClientProps) {
-  const hasContent = Boolean(jsx);
+export function LessonPageClient({ lesson, compiledCode }: LessonPageClientProps) {
+  const hasContent = Boolean(compiledCode);
 
   return (
     <div className="relative flex min-h-screen w-full bg-background">
@@ -25,7 +25,7 @@ export function LessonPageClient({ lesson, jsx }: LessonPageClientProps) {
 
       <div className="flex-1 h-full w-full overflow-auto px-6 py-10">
         {hasContent ? (
-          <LessonViewer jsx={jsx ?? undefined} />
+          <LessonViewer compiledCode={compiledCode ?? undefined} />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             Generated lesson content is not available yet.

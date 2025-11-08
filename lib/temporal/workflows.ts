@@ -7,7 +7,7 @@ type LessonActivities = {
   getLessonById(lessonId: string): Promise<Record<string, unknown>>;
   markLessonCompleted(
     lessonId: string,
-    payload?: { jsxPublicUrl: string; jsxStoragePath: string },
+    payload?: { jsxPublicUrl: string; jsxStoragePath: string; jsxSource?: string; compiledCode?: string },
   ): Promise<void>;
   markLessonFailed(lessonId: string, failureReason: string): Promise<void>;
   markLessonQueued(lessonId: string): Promise<void>;
@@ -30,6 +30,10 @@ type LessonActivities = {
     lessonId: string,
     jsx: string,
   ): Promise<{ publicUrl: string; storagePath: string }>;
+  compileAndStoreJSX(
+    lessonId: string,
+    jsxSource: string,
+  ): Promise<{ jsxSource: string; compiledCode: string }>;
   insertLessonGenerationLog(payload: {
     lessonId: string;
     workflowId: string;
@@ -115,9 +119,12 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
         if (!id) return undefined;
         await activities.markLessonStep(id, 'storing_jsx');
         const storage = await activities.storeJSXInSupabase(id, jsx);
+        const compiled = await activities.compileAndStoreJSX(id, jsx);
         await activities.markLessonCompleted(id, {
           jsxPublicUrl: storage.publicUrl,
           jsxStoragePath: storage.storagePath,
+          jsxSource: compiled.jsxSource,
+          compiledCode: compiled.compiledCode,
         });
         return storage;
       },

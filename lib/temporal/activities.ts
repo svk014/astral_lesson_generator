@@ -13,6 +13,7 @@ import {
 import {
   generateAndStoreImages,
 } from '../generation/imageGeneration';
+import { compileJsxToJs } from '../generation/jsxCompiler';
 
 export {
   refinePromptWithSystemMessage,
@@ -54,7 +55,7 @@ export async function getLessonById(lessonId: string) {
 
 export async function markLessonCompleted(
   lessonId: string,
-  payload?: { jsxPublicUrl: string; jsxStoragePath: string },
+  payload?: { jsxPublicUrl: string; jsxStoragePath: string; jsxSource?: string; compiledCode?: string },
 ) {
   const { error } = await supabase
     .from('lessons')
@@ -62,6 +63,8 @@ export async function markLessonCompleted(
       status: 'completed',
       jsx_public_url: payload?.jsxPublicUrl ?? null,
       jsx_storage_path: payload?.jsxStoragePath ?? null,
+      jsx_source: payload?.jsxSource ?? null,
+      compiled_code: payload?.compiledCode ?? null,
       error_message: null,
     })
     .eq('id', lessonId);
@@ -169,6 +172,23 @@ export async function storeJSXInSupabase(
   }
 
   return { publicUrl: publicUrlData.publicUrl, storagePath: filePath };
+}
+
+/**
+ * Compiles JSX source code to JavaScript and stores both versions
+ */
+export async function compileAndStoreJSX(
+  lessonId: string,
+  jsxSource: string,
+): Promise<{ jsxSource: string; compiledCode: string }> {
+  try {
+    const compiledCode = compileJsxToJs(jsxSource);
+    return { jsxSource, compiledCode };
+  } catch (error) {
+    throw new Error(
+      `Failed to compile JSX: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 export async function generateImagesActivity(

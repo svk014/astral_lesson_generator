@@ -1,53 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as Babel from "@babel/standalone";
 import React from "react";
 
 type LessonViewerProps = {
-  jsx?: string | null;
+  compiledCode?: string | null;
 };
 
-function ensureExport(source: string) {
-  if (/export\s+(default\s+)?[A-Za-z]/.test(source) || /module\.exports/.test(source)) {
-    return source;
-  }
-
-  const componentMatch = source.match(
-    /(?:const|let|var)\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:\([^=]*\)\s*=>|function\s*\()/,
-  );
-
-  if (componentMatch?.[1]) {
-    return `${source}\n\nexport default ${componentMatch[1]};`;
-  }
-
-  const functionMatch = source.match(/function\s+([A-Z][A-Za-z0-9_]*)\s*\(/);
-  if (functionMatch?.[1]) {
-    return `${source}\n\nexport default ${functionMatch[1]};`;
-  }
-
-  return `${source}\n\nexport default () => React.createElement("div", null, "Generated lesson did not return a component");`;
-}
-
-function compileJsx(source: string) {
-  const preparedSource = ensureExport(source);
-
-  const transformed = Babel.transform(preparedSource, {
-    presets: [
-      ["env", { modules: "commonjs", targets: { esmodules: true } }],
-      ["react", { runtime: "classic" }],
-      "typescript",
-    ],
-    filename: "Lesson.tsx",
-    sourceType: "module",
-    parserOpts: {
-      plugins: ["jsx", "typescript"],
-    },
-    generatorOpts: {
-      compact: false,
-    },
-  });
-
+/**
+ * Executes pre-compiled JavaScript code and extracts the React component.
+ * The code is pre-compiled on the backend, so no Babel is needed here.
+ */
+function executeCompiledCode(compiledCode: string): React.ComponentType {
   const exports = {} as Record<string, unknown>;
   const moduleLike = { exports } as { exports: Record<string, unknown> };
 
@@ -59,7 +23,8 @@ function compileJsx(source: string) {
     throw new Error(`Unsupported import: ${id}`);
   };
 
-  const fn = new Function("exports", "module", "require", "React", transformed.code ?? "");
+  // Execute the pre-compiled code in a function scope
+  const fn = new Function("exports", "module", "require", "React", compiledCode);
   fn(exports, moduleLike, require, React);
 
   let resolved =
@@ -86,34 +51,34 @@ function compileJsx(source: string) {
   throw new Error("Generated code did not export a component");
 }
 
-export function LessonViewer({ jsx }: LessonViewerProps) {
+export function LessonViewer({ compiledCode }: LessonViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [Component, setComponent] = useState<React.ComponentType | null>(null);
-  const [jsxContent, setJsxContent] = useState<string | null>(jsx ?? null);
+  const [code, setCode] = useState<string | null>(compiledCode ?? null);
 
   useEffect(() => {
     setError(null);
-    setJsxContent(jsx ?? null);
-  }, [jsx]);
+    setCode(compiledCode ?? null);
+  }, [compiledCode]);
 
   useEffect(() => {
-    if (!jsxContent) {
+    if (!code) {
       setError("Lesson content is not available yet.");
       setComponent(null);
       return;
     }
 
     try {
-      const compiled = compileJsx(jsxContent);
+      const compiled = executeCompiledCode(code);
       setComponent(() => compiled);
       setError(null);
     } catch (err) {
-      console.error("Failed to compile JSX", err);
-      const message = err instanceof Error ? err.message : "Unknown compilation error";
+      console.error("Failed to execute compiled code", err);
+      const message = err instanceof Error ? err.message : "Unknown execution error";
       setError(message);
       setComponent(null);
     }
-  }, [jsxContent]);
+  }, [code]);
 
   if (error) {
     return (

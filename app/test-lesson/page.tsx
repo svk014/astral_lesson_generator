@@ -11,7 +11,7 @@ async function loadTestLesson() {
       throw new Error('Failed to fetch test lesson');
     }
     const data = await response.json();
-    return { lesson: data, jsx: data.jsx, logs: [] } as const;
+    return { lesson: data, compiledCode: data.compiledCode, logs: [] } as const;
   } catch (error) {
     console.error('Failed to load test lesson', error);
     return null;
@@ -25,7 +25,7 @@ export default async function TestLessonPage() {
     notFound();
   }
 
-  const { lesson, jsx } = result;
+  const { lesson, compiledCode } = result;
 
   return (
     <main className="min-h-screen bg-background">
@@ -40,7 +40,7 @@ export default async function TestLessonPage() {
 
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Generated Content</h2>
-          <LessonViewer jsx={jsx} />
+          <LessonViewer compiledCode={compiledCode} />
         </section>
       </div>
     </main>

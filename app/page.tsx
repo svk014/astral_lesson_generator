@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useLessons } from "@/lib/hooks/useLesson";
+import { useSubmitOutline } from "@/lib/hooks/useSubmitOutline";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
@@ -32,36 +33,32 @@ const statusDotStyles: Record<string, string> = {
   timeout: "bg-gray-500",
 };
 
-type LessonApiRow = {
-  id: string;
-  outline: string;
-  status: string;
-  created_at: string;
-  jsx_public_url: string | null;
-  error_message: string | null;
-};
-
 export default function Home() {
-  const [lessons, setLessons] = useState<LessonApiRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
-  const [generating, setGenerating] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [outline, setOutline] = useState("");
+  const [page, setPage] = useState(0);
   const limit = 10;
 
-  const fetchLessons = useCallback(async (pageNum: number) => {
-    const res = await fetch(`/api/lessons?limit=${limit}&offset=${pageNum * limit}`);
-    const data = await res.json();
-    setLessons(data.lessons || []);
-    setTotal(data.total || 0);
-  }, [limit]);
+  // React Query hooks for automatic polling
+  const { data: lessonsData, isLoading: lessonsLoading } = useLessons();
+  const { mutate: submitOutline, isPending: isSubmitting } = useSubmitOutline();
 
-  useEffect(() => {
-    fetchLessons(page).catch((error) => {
-      console.error("Failed to load lessons", error);
+  const lessons = lessonsData || [];
+  const total = lessons.length;
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!outline.trim()) return;
+    
+    submitOutline({ outline }, {
+      onSuccess: () => {
+        setOutline("");
+        setPage(0);
+      },
     });
-  }, [page, fetchLessons]);
+  };
+
+  const paginatedLessons = lessons.slice(page * limit, (page + 1) * limit);
+  const maxPage = Math.ceil(total / limit);
 
   return (
     <main className="min-h-screen bg-background">
@@ -74,23 +71,7 @@ export default function Home() {
           </header>
           <form
             className="flex flex-col gap-4 rounded-lg border bg-card p-6 shadow-sm"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!outline.trim()) return;
-              setGenerating(true);
-              try {
-                await fetch("/api/lessons", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ outline }),
-                });
-                setOutline("");
-                setPage(0);
-                await fetchLessons(0);
-              } finally {
-                setGenerating(false);
-              }
-            }}
+            onSubmit={handleSubmit}
           >
             <div className="space-y-2">
               <label htmlFor="lesson-outline" className="text-sm font-medium">Lesson Outline</label>
@@ -101,43 +82,30 @@ export default function Home() {
                 className="min-h-[160px] w-full resize-y rounded-md border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={outline}
                 onChange={e => setOutline(e.target.value)}
-                disabled={generating}
+                disabled={isSubmitting}
               />
             </div>
             <div className="flex justify-end">
               <button
                 type="submit"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
-                disabled={generating || !outline.trim()}
+                disabled={isSubmitting || !outline.trim()}
               >
-                {generating ? "Generating..." : "Generate"}
+                {isSubmitting ? "Generating..." : "Generate"}
               </button>
             </div>
           </form>
         </div>
 
         {/* Right: Lesson List */}
-  <div className="flex flex-col flex-[2] min-w-[400px] max-w-2xl h-full relative">
+        <div className="flex flex-col flex-[2] min-w-[400px] max-w-2xl h-full relative">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold">Recent Lessons</h2>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">Click a lesson title to open it.</span>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/80 border border-border"
-                title="Refresh lesson list"
-                onClick={async () => {
-                  setRefreshing(true);
-                  try {
-                    await fetchLessons(page);
-                  } finally {
-                    setRefreshing(false);
-                  }
-                }}
-                disabled={refreshing}
-              >
-                &#x21bb; Refresh
-              </button>
+              {lessonsLoading && (
+                <span className="text-xs text-muted-foreground animate-pulse">Updating...</span>
+              )}
             </div>
           </div>
           <div className="overflow-y-auto rounded-lg border flex-1 pb-20">
@@ -150,7 +118,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-card/80">
-                {lessons.map((lesson) => (
+                {paginatedLessons.map((lesson) => (
                   <tr key={lesson.id} className="transition hover:bg-muted/50">
                     <td className="px-4 py-3">
                       <Link
@@ -189,11 +157,11 @@ export default function Home() {
             >
               Previous
             </button>
-            <span className="text-xs">Page {page + 1} of {Math.max(1, Math.ceil(total / limit))}</span>
+            <span className="text-xs">Page {page + 1} of {Math.max(1, maxPage)}</span>
             <button
               className="px-3 py-1 rounded bg-muted text-xs"
-              onClick={() => setPage((p) => (p + 1 < Math.ceil(total / limit) ? p + 1 : p))}
-              disabled={page + 1 >= Math.ceil(total / limit)}
+              onClick={() => setPage((p) => (p + 1 < maxPage ? p + 1 : p))}
+              disabled={page + 1 >= maxPage}
             >
               Next
             </button>

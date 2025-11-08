@@ -9,7 +9,6 @@
     "harness": "tsx scripts/generation-harness.ts"
   },
   "dependencies": {
-    "@babel/standalone": "^7.26.2",
     "@browserbasehq/stagehand": "^3.0.1",
     "@google/genai": "^1.29.0",
     "@google/generative-ai": "^0.24.1",
@@ -19,6 +18,7 @@
     "@radix-ui/react-slot": "^1.2.2",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "^2.78.0",
+    "@tanstack/react-query": "^5.90.7",
     "@temporalio/client": "^1.13.1",
     "@temporalio/common": "^1.13.1",
     "@temporalio/worker": "^1.13.1",
@@ -36,8 +36,13 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-react": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
     "@eslint/eslintrc": "^3",
     "@temporalio/testing": "^1.13.1",
+    "@types/babel__core": "^7.20.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

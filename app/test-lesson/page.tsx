@@ -1,31 +1,18 @@
 import { notFound } from "next/navigation";
 
-import { LessonViewer } from "../lessons/[id]/LessonViewer";
+import { HtmlLessonViewer } from "../lessons/[id]/HtmlLessonViewer";
+import { loadTestLessonDirect } from "@/lib/test-lesson/loadTestLesson";
 
 export const dynamic = "force-dynamic";
 
-async function loadTestLesson() {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/test-lesson`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch test lesson');
-    }
-    const data = await response.json();
-    return { lesson: data, compiledCode: data.compiledCode, logs: [] } as const;
-  } catch (error) {
-    console.error('Failed to load test lesson', error);
-    return null;
-  }
-}
-
 export default async function TestLessonPage() {
-  const result = await loadTestLesson();
+  const result = await loadTestLessonDirect();
 
   if (!result) {
     notFound();
   }
 
-  const { lesson, compiledCode } = result;
+  const { lesson, renderedHtml } = result;
 
   return (
     <main className="min-h-screen bg-background">
@@ -40,7 +27,7 @@ export default async function TestLessonPage() {
 
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Generated Content</h2>
-          <LessonViewer compiledCode={compiledCode} />
+          <HtmlLessonViewer htmlContent={renderedHtml} />
         </section>
       </div>
     </main>

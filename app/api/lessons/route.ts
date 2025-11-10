@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServiceSupabaseClient } from '@/lib/supabase/server';
 import { getTemporalClient } from '@/lib/temporal/client';
 import { env } from '@/lib/env';
+import { LessonStatus } from '@/lib/temporal/types';
 
 type LessonRow = {
   id: string;
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
   try {
     const { data: createdLesson, error: insertError } = await supabase
       .from('lessons')
-      .insert({ outline: normalizedOutline, status: 'pending' })
+      .insert({ outline: normalizedOutline, status: LessonStatus.PENDING })
       .select()
       .single<LessonRow>();
 
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
     const { data: updatedLesson, error: updateError } = await supabase
       .from('lessons')
       .update({
-        status: 'queued',
+        status: LessonStatus.QUEUED,
         temporal_workflow_id: handle.workflowId,
         temporal_run_id: handle.firstExecutionRunId,
       })
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
     if (lesson) {
       await supabase
         .from('lessons')
-        .update({ status: 'failed', error_message: 'Failed before workflow start' })
+        .update({ status: LessonStatus.FAILED, error_message: 'Failed before workflow start' })
         .eq('id', lesson.id);
     }
 

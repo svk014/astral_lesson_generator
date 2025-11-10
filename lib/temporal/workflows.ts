@@ -1,57 +1,8 @@
 import { proxyActivities, workflowInfo } from '@temporalio/workflow';
 
 import { runLessonGeneration } from '../generation/runner';
-import type { ValidationResult, RuntimeValidationResult } from '../generation/schemas';
-
-type LessonActivities = {
-  getLessonById(lessonId: string): Promise<Record<string, unknown>>;
-  markLessonCompleted(
-    lessonId: string,
-    payload?: { 
-      jsxPublicUrl: string; 
-      jsxStoragePath: string; 
-      jsxSource?: string; 
-      compiledCode?: string;
-      renderedHtml?: string;
-    },
-  ): Promise<void>;
-  markLessonFailed(lessonId: string, failureReason: string): Promise<void>;
-  markLessonQueued(lessonId: string): Promise<void>;
-  markLessonRunning(lessonId: string): Promise<void>;
-  markLessonStep(lessonId: string, step: string): Promise<void>;
-  refinePromptWithSystemMessage(outline: string): Promise<string>;
-  generateImagesActivity(
-    outline: string,
-    refinedPrompt: string,
-    lessonId: string,
-  ): Promise<Array<{ id: string; title: string; shortUrl: string; description: string }>>;
-  generateJSXWithGemini(
-    prompt: string,
-    images?: Array<{ id: string; title: string; shortUrl: string; description: string }>,
-  ): Promise<string>;
-  validateJSXStatic(jsx: string): Promise<ValidationResult>;
-  validateJSXRuntime(jsx: string): Promise<RuntimeValidationResult>;
-  fixIssuesWithGemini(jsx: string, errors: string[]): Promise<string>;
-  storeJSXInSupabase(
-    lessonId: string,
-    jsx: string,
-  ): Promise<{ publicUrl: string; storagePath: string }>;
-  compileAndStoreJSX(
-    lessonId: string,
-    jsxSource: string,
-  ): Promise<{ jsxSource: string; compiledCode: string }>;
-  renderJSXToHtml(compiledCode: string): Promise<string>;
-  insertLessonGenerationLog(payload: {
-    lessonId: string;
-    workflowId: string;
-    workflowRunId: string;
-    step: string;
-    attempt: number;
-    status: 'success' | 'failure';
-    info?: unknown;
-    eventTimestamp: string;
-  }): Promise<void>;
-};
+import type { LessonActivities } from './types';
+import { LessonStatus } from './types';
 
 const activities = proxyActivities<LessonActivities>({
   startToCloseTimeout: '10 minutes',
@@ -99,47 +50,33 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
     { outline, lessonId },
     {
       refinePrompt: async (value) => {
-        await activities.markLessonStep(lessonId, 'generating_jsx');
+        await activities.markLessonStep(lessonId, LessonStatus.GENERATING_JSX);
         return activities.refinePromptWithSystemMessage(value);
       },
       generateImages: async (outline, refinedPrompt, lessonId) => {
-        await activities.markLessonStep(lessonId || '', 'generating_images');
+        await activities.markLessonStep(lessonId || '', LessonStatus.GENERATING_IMAGES);
         return activities.generateImagesActivity(outline, refinedPrompt, lessonId || '');
       },
       generateJSX: async (prompt, images) => {
-        await activities.markLessonStep(lessonId, 'generating_jsx');
+        await activities.markLessonStep(lessonId, LessonStatus.GENERATING_JSX);
         return activities.generateJSXWithGemini(prompt, images);
       },
       validateJSXStatic: async (jsx) => {
-        await activities.markLessonStep(lessonId, 'validating_jsx');
+        await activities.markLessonStep(lessonId, LessonStatus.VALIDATING_JSX);
         return activities.validateJSXStatic(jsx);
       },
       validateJSXRuntime: async (jsx) => {
-        await activities.markLessonStep(lessonId, 'validating_jsx');
+        await activities.markLessonStep(lessonId, LessonStatus.VALIDATING_JSX);
         return activities.validateJSXRuntime(jsx);
       },
       fixIssues: async (jsx, errors) => {
-        await activities.markLessonStep(lessonId, 'generating_jsx');
+        await activities.markLessonStep(lessonId, LessonStatus.GENERATING_JSX);
         return activities.fixIssuesWithGemini(jsx, errors);
       },
       storeJSX: async ({ lessonId: id, jsx }) => {
         if (!id) return undefined;
-        await activities.markLessonStep(id, 'storing_jsx');
-        const storage = await activities.storeJSXInSupabase(id, jsx);
-        const compiled = await activities.compileAndStoreJSX(id, jsx);
-        
-        // Render the compiled code to static HTML
-        await activities.markLessonStep(id, 'rendering_html');
-        const renderedHtml = await activities.renderJSXToHtml(compiled.compiledCode);
-        
-        await activities.markLessonCompleted(id, {
-          jsxPublicUrl: storage.publicUrl,
-          jsxStoragePath: storage.storagePath,
-          jsxSource: compiled.jsxSource,
-          compiledCode: compiled.compiledCode,
-          renderedHtml,
-        });
-        return storage;
+        await activities.markLessonStep(id, LessonStatus.STORING_JSX);
+        return activities.saveCompleteLesson(id, jsx);
       },
     },
     {

@@ -80,12 +80,20 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
       });
     }
 
-    // Async destroy browser (don't block on completion)
+    // Kill browser process forcefully in background (don't block execution)
     if (stagehand) {
-      console.log('[Stagehand] Destroying browser (async)...');
-      stagehand.close().catch((err) => {
-        console.warn('[Stagehand] Browser close error (ignored):', err instanceof Error ? err.message : String(err));
-      });
+      setTimeout(() => {
+        try {
+          // Get the browser process and kill it
+          const browserId = (stagehand as any).browserId;
+          if (browserId) {
+            console.debug('[Stagehand] Force killing browser process:', browserId);
+            process.kill(browserId, 'SIGKILL');
+          }
+        } catch (err) {
+          // Ignore kill errors - process may already be gone
+        }
+      }, 100); // Kill after 100ms
     }
   }
 }

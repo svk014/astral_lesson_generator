@@ -128,6 +128,13 @@ export async function executeRuntimeTests(
 
   console.log(`[Stagehand] Test results: ${testsPassed}/${testPlan.tests.length} passed`);
 
+  try {
+    await page.close();
+    console.log('[Stagehand] Test page closed');
+  } catch (err) {
+    console.warn('[Stagehand] Failed to close test page:', err instanceof Error ? err.message : String(err));
+  }
+
   return {
     testsPassed,
     testsRun: testPlan.tests.length,

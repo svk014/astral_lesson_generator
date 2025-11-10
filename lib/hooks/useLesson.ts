@@ -60,8 +60,17 @@ export function useLesson(lessonId: string | null) {
   });
 }
 
-async function fetchLessons(): Promise<Lesson[]> {
-  const response = await fetch('/api/lessons');
+async function fetchLessons(limit?: number, offset?: number): Promise<Lesson[]> {
+  const url = new URL('/api/lessons', typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+  
+  if (limit !== undefined) {
+    url.searchParams.set('limit', String(limit));
+  }
+  if (offset !== undefined) {
+    url.searchParams.set('offset', String(offset));
+  }
+
+  const response = await fetch(url.toString());
   if (!response.ok) {
     throw new Error(`Failed to fetch lessons: ${response.statusText}`);
   }
@@ -70,13 +79,14 @@ async function fetchLessons(): Promise<Lesson[]> {
 }
 
 /**
- * Hook to fetch all lessons with polling
- * Useful for showing recent lessons list that updates as new lessons are generated
+ * Hook to fetch all lessons with pagination and polling
+ * @param limit - Number of lessons per page (optional)
+ * @param offset - Number of lessons to skip (optional)
  */
-export function useLessons() {
+export function useLessons(limit?: number, offset?: number) {
   return useQuery({
-    queryKey: ['lessons'],
-    queryFn: fetchLessons,
+    queryKey: ['lessons', limit, offset],
+    queryFn: () => fetchLessons(limit, offset),
     // Poll every 3 seconds for recent lessons
     refetchInterval: 3000,
   });

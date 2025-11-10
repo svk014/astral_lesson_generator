@@ -37,13 +37,15 @@ export default function Home() {
   const [outline, setOutline] = useState("");
   const [page, setPage] = useState(0);
   const limit = 10;
+  const offset = page * limit;
 
   // React Query hooks for automatic polling
-  const { data: lessonsData, isLoading: lessonsLoading } = useLessons();
+  const { data: lessonsData, isLoading: lessonsLoading } = useLessons(limit, offset);
   const { mutate: submitOutline, isPending: isSubmitting } = useSubmitOutline();
 
   const lessons = lessonsData || [];
-  const total = lessons.length;
+  // If we get fewer items than the limit, we've reached the end
+  const hasNextPage = lessons.length === limit;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -56,9 +58,6 @@ export default function Home() {
       },
     });
   };
-
-  const paginatedLessons = lessons.slice(page * limit, (page + 1) * limit);
-  const maxPage = Math.ceil(total / limit);
 
   return (
     <main className="min-h-screen bg-background">
@@ -118,7 +117,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-card/80">
-                {paginatedLessons.map((lesson) => (
+                {lessons.map((lesson) => (
                   <tr key={lesson.id} className="transition hover:bg-muted/50">
                     <td className="px-4 py-3">
                       <Link
@@ -157,11 +156,11 @@ export default function Home() {
             >
               Previous
             </button>
-            <span className="text-xs">Page {page + 1} of {Math.max(1, maxPage)}</span>
+            <span className="text-xs">Page {page + 1}</span>
             <button
               className="px-3 py-1 rounded bg-muted text-xs"
-              onClick={() => setPage((p) => (p + 1 < maxPage ? p + 1 : p))}
-              disabled={page + 1 >= maxPage}
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNextPage}
             >
               Next
             </button>

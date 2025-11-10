@@ -68,8 +68,11 @@ export async function compileAndStoreJSX(
   }
 }
 
-/** Render compiled JSX to static HTML using server-side rendering */
-export async function renderJSXToHtml(compiledCode: string): Promise<string> {
+/** Render compiled JSX to static HTML and save to storage */
+export async function renderJSXToHtml(
+  lessonId: string,
+  compiledCode: string,
+): Promise<{ html: string; storagePath: string }> {
   try {
     const result = executeComponentCode(compiledCode);
 
@@ -87,7 +90,19 @@ export async function renderJSXToHtml(compiledCode: string): Promise<string> {
       React.createElement(result.component as React.ComponentType),
     );
 
-    return renderedHtml;
+    // Save rendered HTML to storage
+    const filePath = `${lessonId}/${randomUUID()}.html`;
+    const buffer = Buffer.from(renderedHtml, 'utf-8');
+
+    const { error: uploadError } = await supabase.storage
+      .from(env.supabase.storageBucket)
+      .upload(filePath, buffer, { upsert: true, contentType: 'text/html' });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload rendered HTML: ${uploadError.message}`);
+    }
+
+    return { html: renderedHtml, storagePath: filePath };
   } catch (error) {
     throw new Error(
       `Failed to render JSX to HTML: ${error instanceof Error ? error.message : String(error)}`,

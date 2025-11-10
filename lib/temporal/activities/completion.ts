@@ -10,14 +10,12 @@ export async function saveCompleteLesson(
 ): Promise<{ publicUrl: string; storagePath: string }> {
   const storage = await storeJSXInSupabase(lessonId, jsx);
   const compiled = await compileAndStoreJSX(lessonId, jsx);
-  const renderedHtml = await renderJSXToHtml(compiled.compiledCode);
+  const rendered = await renderJSXToHtml(lessonId, compiled.compiledCode);
 
   await markLessonCompleted(lessonId, {
     jsxPublicUrl: storage.publicUrl,
     jsxStoragePath: storage.storagePath,
-    jsxSource: compiled.jsxSource,
-    compiledCode: compiled.compiledCode,
-    renderedHtml,
+    renderedHtmlPath: rendered.storagePath,
   });
 
   return storage;

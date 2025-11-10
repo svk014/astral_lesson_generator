@@ -6,9 +6,7 @@ type LessonRecord = {
   status: string;
   jsx_storage_path: string | null;
   jsx_public_url: string | null;
-  jsx_source: string | null;
-  compiled_code: string | null;
-  rendered_html: string | null;
+  rendered_html_path: string | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -40,8 +38,23 @@ export async function loadLessonWithJsx(lessonId: string): Promise<LessonWithJsx
 
   const lesson = lessonData as LessonRecord;
 
-  // Use rendered_html from the database for server-side rendering
-  const renderedHtml = lesson.rendered_html;
+  // Fetch rendered HTML from storage if path exists
+  let renderedHtml: string | null = null;
+  if (lesson.rendered_html_path) {
+    try {
+      const { data, error: downloadError } = await supabase.storage
+        .from('lessons')
+        .download(lesson.rendered_html_path);
+
+      if (downloadError) {
+        console.error('Failed to fetch rendered HTML from storage', downloadError);
+      } else if (data) {
+        renderedHtml = await data.text();
+      }
+    } catch (err) {
+      console.error('Error reading rendered HTML from storage:', err);
+    }
+  }
 
   return {
     lesson,

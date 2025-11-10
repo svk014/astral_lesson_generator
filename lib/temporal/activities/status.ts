@@ -31,9 +31,7 @@ export async function markLessonCompleted(
       status: LessonStatus.COMPLETED,
       jsx_public_url: payload?.jsxPublicUrl ?? null,
       jsx_storage_path: payload?.jsxStoragePath ?? null,
-      jsx_source: payload?.jsxSource ?? null,
-      compiled_code: payload?.compiledCode ?? null,
-      rendered_html: payload?.renderedHtml ?? null,
+      rendered_html_path: payload?.renderedHtmlPath ?? null,
       error_message: null,
     })
     .eq('id', lessonId);

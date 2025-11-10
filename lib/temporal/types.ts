@@ -16,9 +16,7 @@ export enum LessonStatus {
 export type LessonCompletedPayload = {
   jsxPublicUrl: string;
   jsxStoragePath: string;
-  jsxSource?: string;
-  compiledCode?: string;
-  renderedHtml?: string;
+  renderedHtmlPath?: string;
 };
 
 export type LessonGenerationLogPayload = {
@@ -61,7 +59,10 @@ export type StorageActivities = {
     lessonId: string,
     jsxSource: string,
   ): Promise<{ jsxSource: string; compiledCode: string }>;
-  renderJSXToHtml(compiledCode: string): Promise<string>;
+  renderJSXToHtml(
+    lessonId: string,
+    compiledCode: string,
+  ): Promise<{ html: string; storagePath: string }>;
   saveCompleteLesson(
     lessonId: string,
     jsx: string,

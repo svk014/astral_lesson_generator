@@ -6,8 +6,6 @@ import { renderJsxToStaticPage } from './runtime/jsxRenderer';
 import { startRuntimePreviewServer } from './runtime/previewServer';
 import { generateRuntimeTestPlan } from './runtime/testGenerator';
 import { executeRuntimeTests } from './runtime/testExecutor';
-
-// Re-export for backward compatibility
 export { generationConfig } from './runtime/testGenerator';
 
 /**
@@ -19,16 +17,10 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
   let previewServer: Awaited<ReturnType<typeof startRuntimePreviewServer>> | null = null;
 
   try {
-    // Step 1: Generate test plan using Gemini
     const testPlan = await generateRuntimeTestPlan(jsx);
-
-    // Step 2: Render JSX to static HTML
     const html = renderJsxToStaticPage(jsx);
-
-    // Step 3: Start preview server
     previewServer = await startRuntimePreviewServer(html);
 
-    // Step 4: Create fresh browser instance (not from pool)
     console.log('[Stagehand] Creating fresh browser instance...');
     stagehand = new Stagehand({
       env: 'LOCAL',
@@ -73,7 +65,6 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
     const result: RuntimeValidationResult = { valid: false, errors: [message] };
     return runtimeValidationResultSchema.parse(result);
   } finally {
-    // Always cleanup resources
     if (previewServer) {
       await previewServer.close().catch(() => {
         /* swallow shutdown errors */

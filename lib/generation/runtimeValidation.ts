@@ -1,18 +1,18 @@
-import type { Stagehand } from '@browserbasehq/stagehand';
-import { stagehandPool } from './stagehandPool';
+import { Stagehand } from '@browserbasehq/stagehand';
+import path from 'node:path';
+import { env } from '../env';
 import { runtimeValidationResultSchema, type RuntimeValidationResult } from './schemas';
 import { renderJsxToStaticPage } from './runtime/jsxRenderer';
 import { startRuntimePreviewServer } from './runtime/previewServer';
 import { generateRuntimeTestPlan } from './runtime/testGenerator';
 import { executeRuntimeTests } from './runtime/testExecutor';
-import { cleanupBrowserAndRelease } from './runtime/browserCleanup';
 
 // Re-export for backward compatibility
 export { generationConfig } from './runtime/testGenerator';
 
 /**
  * Main orchestrator for runtime validation of JSX components
- * Coordinates test generation, browser management, and test execution
+ * Creates a fresh browser instance for each validation to avoid state corruption.
  */
 export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidationResult> {
   let stagehand: Stagehand | null = null;
@@ -28,11 +28,18 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
     // Step 3: Start preview server
     previewServer = await startRuntimePreviewServer(html);
 
-    // Step 4: Acquire browser from pool
-    stagehand = await stagehandPool.acquire();
-    if (!stagehand) {
-      throw new Error('Stagehand failed to initialize.');
-    }
+    // Step 4: Create fresh browser instance (not from pool)
+    console.log('[Stagehand] Creating fresh browser instance...');
+    stagehand = new Stagehand({
+      env: 'LOCAL',
+      cacheDir: path.resolve(process.cwd(), '.stagehand-cache'),
+      model: {
+        modelName: env.stagehand.model,
+        apiKey: env.openai.apiKey,
+      },
+    });
+    await stagehand.init();
+    console.log('[Stagehand] Browser initialized');
 
     // Step 5: Execute tests
     const { testsPassed, testsRun, failures } = await executeRuntimeTests(
@@ -73,7 +80,12 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
       });
     }
 
-    // Always release browser back to pool
-    await cleanupBrowserAndRelease(stagehand);
+    // Async destroy browser (don't block on completion)
+    if (stagehand) {
+      console.log('[Stagehand] Destroying browser (async)...');
+      stagehand.close().catch((err) => {
+        console.warn('[Stagehand] Browser close error (ignored):', err instanceof Error ? err.message : String(err));
+      });
+    }
   }
 }

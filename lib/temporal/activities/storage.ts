@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../../env';
 import { compileJsxToJs } from '../../generation/jsxCompiler';
-import { executeComponentCode } from '../../generation/componentExecutor';
 
 const supabase = createClient(env.supabase.url, env.supabase.serviceKey);
 
@@ -53,59 +52,31 @@ export async function storeJSXInSupabase(
   return { publicUrl: publicUrlData.publicUrl, storagePath: filePath };
 }
 
-/** Compile JSX to JavaScript */
+/** Compile JSX to ES module and save to storage */
 export async function compileAndStoreJSX(
   lessonId: string,
   jsxSource: string,
-): Promise<{ jsxSource: string; compiledCode: string }> {
+): Promise<{ storagePath: string }> {
   try {
     const compiledCode = compileJsxToJs(jsxSource);
-    return { jsxSource, compiledCode };
-  } catch (error) {
-    throw new Error(
-      `Failed to compile JSX: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-}
-
-/** Render compiled JSX to static HTML and save to storage */
-export async function renderJSXToHtml(
-  lessonId: string,
-  compiledCode: string,
-): Promise<{ html: string; storagePath: string }> {
-  try {
-    const result = executeComponentCode(compiledCode);
-
-    if (!result.success) {
-      throw new Error(`Component execution failed: ${result.error}`);
-    }
-
-    // Dynamically import react-dom/server to avoid server-only module issues
-    const reactDomServer = await import('react-dom/server');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const React = require('react') as typeof import('react');
-
-    // Render the component to static HTML
-    const renderedHtml = reactDomServer.renderToStaticMarkup(
-      React.createElement(result.component as React.ComponentType),
-    );
-
-    // Save rendered HTML to storage
-    const filePath = `${lessonId}/${randomUUID()}.html`;
-    const buffer = Buffer.from(renderedHtml, 'utf-8');
+    
+    // Save compiled JS as ES module to storage
+    const filePath = `${lessonId}/${randomUUID()}.js`;
+    const buffer = Buffer.from(compiledCode, 'utf-8');
 
     const { error: uploadError } = await supabase.storage
       .from(env.supabase.storageBucket)
-      .upload(filePath, buffer, { upsert: true, contentType: 'text/html' });
+      .upload(filePath, buffer, { upsert: true, contentType: 'application/javascript' });
 
     if (uploadError) {
-      throw new Error(`Failed to upload rendered HTML: ${uploadError.message}`);
+      throw new Error(`Failed to upload compiled JS: ${uploadError.message}`);
     }
 
-    return { html: renderedHtml, storagePath: filePath };
+    return { storagePath: filePath };
   } catch (error) {
     throw new Error(
-      `Failed to render JSX to HTML: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to compile and store JSX: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
+

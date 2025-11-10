@@ -15,7 +15,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
     notFound();
   }
 
-  const { lesson, renderedHtml } = payload;
+  const { lesson, compiledJsPath } = payload;
 
   return (
     <LessonPageClient
@@ -24,7 +24,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
         outline: typeof lesson.outline === "string" ? lesson.outline : String(lesson.outline ?? ""),
         status: typeof lesson.status === "string" ? lesson.status : undefined,
       }}
-      renderedHtml={renderedHtml}
+      compiledJsPath={compiledJsPath}
     />
   );
 }

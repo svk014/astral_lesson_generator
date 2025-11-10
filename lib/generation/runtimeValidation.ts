@@ -9,9 +9,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as ts from 'typescript';
 import { z } from 'zod';
 
-import { env } from '../env';
 import { retryWithExponentialBackoff, stripJsonFence } from '../utils';
 import { geminiModel } from '../gemini/client';
+import { stagehandPool } from './stagehandPool';
 import {
   runtimeTestPlanSchema,
   runtimeValidationResultSchema,
@@ -276,15 +276,8 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
 
     previewServer = await startRuntimePreviewServer(html);
 
-    stagehand = new Stagehand({
-      env: 'LOCAL',
-      cacheDir: path.resolve(process.cwd(), '.stagehand-cache'),
-      model: {
-        modelName: env.stagehand.model,
-        apiKey: env.openai.apiKey,
-      }
-    });
-    await stagehand.init();
+    // Acquire browser from pool instead of creating new one
+    stagehand = await stagehandPool.acquire();
 
     const activeStagehand = stagehand;
     if (!activeStagehand) {
@@ -368,23 +361,25 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
         /* swallow shutdown errors */
       });
     }
-    
-    // Close Stagehand - use timeout to prevent indefinite hang
+
+    // Release browser back to pool instead of closing
     if (stagehand) {
-      const closePromise = stagehand.close().catch((error) => {
-        console.warn('[Stagehand] Error during close:', 
-          error instanceof Error ? error.message : String(error));
-      });
-      
-      // Add 3 second timeout - if close takes longer, log warning but don't block
-      const timeoutPromise = new Promise<void>((resolve) => {
-        setTimeout(() => {
-          console.warn('[Stagehand] Close operation exceeded 3s timeout, continuing anyway');
-          resolve();
-        }, 3000);
-      });
-      
-      await Promise.race([closePromise, timeoutPromise]);
+      try {
+        // Clear any new pages created during tests
+        const pages = stagehand.context.pages();
+        for (const page of pages) {
+          try {
+            await page.close();
+          } catch {
+            // ignore
+          }
+        }
+        // Release back to pool for reuse
+        stagehandPool.release(stagehand);
+        console.log('[Stagehand] Browser released back to pool');
+      } catch (error) {
+        console.warn('[Stagehand] Error releasing browser:', error);
+      }
     }
   }
 }

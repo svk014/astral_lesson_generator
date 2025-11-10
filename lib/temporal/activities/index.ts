@@ -10,7 +10,7 @@ export {
 export { validateJSXStatic, validateJSXRuntime } from './validation';
 
 // Storage Activities
-export { getLessonById, storeJSXInSupabase, compileAndStoreJSX, renderJSXToHtml } from './storage';
+export { getLessonById, storeJSXInSupabase, compileAndStoreJSX } from './storage';
 
 // Status Activities
 export {

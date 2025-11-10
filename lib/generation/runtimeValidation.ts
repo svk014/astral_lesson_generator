@@ -362,15 +362,29 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
     const result: RuntimeValidationResult = { valid: false, errors: [message] };
     return runtimeValidationResultSchema.parse(result);
   } finally {
+    // Close preview server first
     if (previewServer) {
       await previewServer.close().catch(() => {
         /* swallow shutdown errors */
       });
     }
+    
+    // Close Stagehand - use timeout to prevent indefinite hang
     if (stagehand) {
-      await stagehand.close().catch(() => {
-        /* swallow shutdown errors */
+      const closePromise = stagehand.close().catch((error) => {
+        console.warn('[Stagehand] Error during close:', 
+          error instanceof Error ? error.message : String(error));
       });
+      
+      // Add 3 second timeout - if close takes longer, log warning but don't block
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          console.warn('[Stagehand] Close operation exceeded 3s timeout, continuing anyway');
+          resolve();
+        }, 3000);
+      });
+      
+      await Promise.race([closePromise, timeoutPromise]);
     }
   }
 }

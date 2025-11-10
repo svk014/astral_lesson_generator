@@ -93,10 +93,7 @@ export default function LessonRenderer({ lessonId, compiledJsPath }: LessonRende
 
     return () => {
       mounted = false;
-      if (rootRef.current) {
-        rootRef.current.unmount();
-        rootRef.current = null;
-      }
+      rootRef.current = null;
     };
   }, [compiledJsPath, lessonId]);
 

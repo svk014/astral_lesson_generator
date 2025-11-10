@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { reportError } from '@/lib/error-reporting';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -12,10 +13,6 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-/**
- * Error Boundary component to catch and handle render errors in lessons
- * Provides graceful error UI when lesson content fails to render
- */
 export class LessonErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -27,7 +24,10 @@ export class LessonErrorBoundary extends React.Component<ErrorBoundaryProps, Err
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Lesson Error Boundary caught:', error, errorInfo);
+    reportError(error, {
+      component: 'LessonErrorBoundary',
+      errorBoundaryInfo: errorInfo.componentStack,
+    });
   }
 
   render() {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useLessons } from "@/lib/hooks/useLesson";
 import { useSubmitOutline } from "@/lib/hooks/useSubmitOutline";
 
@@ -47,17 +47,31 @@ export default function Home() {
   // If we get fewer items than the limit, we've reached the end
   const hasNextPage = lessons.length === limit;
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!outline.trim()) return;
-    
-    submitOutline({ outline }, {
-      onSuccess: () => {
-        setOutline("");
-        setPage(0);
-      },
-    });
-  };
+  // Memoize formatted dates to avoid recreating Date objects on every render
+  const formattedLessons = useMemo(
+    () =>
+      lessons.map((lesson) => ({
+        ...lesson,
+        formattedDate: new Date(lesson.created_at).toLocaleString(),
+      })),
+    [lessons]
+  );
+
+  // Memoize callback to prevent unnecessary re-renders if passed to children
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (!outline.trim()) return;
+      
+      submitOutline({ outline }, {
+        onSuccess: () => {
+          setOutline("");
+          setPage(0);
+        },
+      });
+    },
+    [outline, submitOutline]
+  );
 
   return (
     <main className="min-h-screen bg-background">
@@ -117,7 +131,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-card/80">
-                {lessons.map((lesson) => (
+                {formattedLessons.map((lesson) => (
                   <tr key={lesson.id} className="transition hover:bg-muted/50">
                     <td className="px-4 py-3">
                       <Link
@@ -142,7 +156,7 @@ export default function Home() {
                         {lesson.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">{new Date(lesson.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right">{lesson.formattedDate}</td>
                   </tr>
                 ))}
               </tbody>

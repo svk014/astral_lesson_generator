@@ -4,12 +4,6 @@ type HtmlLessonViewerProps = {
   htmlContent?: string | null;
 };
 
-/**
- * Safely renders pre-rendered HTML content without executing any JavaScript.
- * This eliminates the security risk of client-side code execution.
- * 
- * Note: This component is wrapped with LessonErrorBoundary to handle render failures
- */
 export function HtmlLessonViewer({ htmlContent }: HtmlLessonViewerProps) {
   if (!htmlContent) {
     return (

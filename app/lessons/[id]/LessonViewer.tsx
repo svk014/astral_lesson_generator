@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import React from "react";
+import { reportError } from "@/lib/error-reporting";
 
 type LessonViewerProps = {
   compiledCode?: string | null;
@@ -54,31 +55,33 @@ function executeCompiledCode(compiledCode: string): React.ComponentType {
 export function LessonViewer({ compiledCode }: LessonViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [Component, setComponent] = useState<React.ComponentType | null>(null);
-  const [code, setCode] = useState<string | null>(compiledCode ?? null);
 
   useEffect(() => {
-    setError(null);
-    setCode(compiledCode ?? null);
-  }, [compiledCode]);
-
-  useEffect(() => {
-    if (!code) {
+    if (!compiledCode) {
       setError("Lesson content is not available yet.");
       setComponent(null);
       return;
     }
 
     try {
-      const compiled = executeCompiledCode(code);
+      const compiled = executeCompiledCode(compiledCode);
       setComponent(() => compiled);
       setError(null);
     } catch (err) {
       console.error("Failed to execute compiled code", err);
       const message = err instanceof Error ? err.message : "Unknown execution error";
+      
+      // Report error for monitoring
+      if (err instanceof Error) {
+        reportError(err, {
+          component: 'LessonViewer',
+        });
+      }
+      
       setError(message);
       setComponent(null);
     }
-  }, [code]);
+  }, [compiledCode]);
 
   if (error) {
     return (

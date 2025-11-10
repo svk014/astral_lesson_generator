@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import * as ReactJsxRuntime from 'react/jsx-runtime';
 import { LessonErrorBoundary } from './LessonErrorBoundary';
+import { reportError } from '@/lib/error-reporting';
 
 interface LessonRendererProps {
   lessonId: string;
@@ -22,7 +22,6 @@ export default function LessonRenderer({ lessonId, compiledJsPath }: LessonRende
 
   useEffect(() => {
     let mounted = true;
-    let currentRoot: ReturnType<typeof createRoot> | null = null;
 
     const loadAndRenderLesson = async () => {
       try {
@@ -30,32 +29,10 @@ export default function LessonRenderer({ lessonId, compiledJsPath }: LessonRende
           throw new Error('No compiled JS path provided');
         }
 
-        // CRITICAL: Ensure globals are set BEFORE importing the module
-        // because the module code runs its destructuring at import time
-        if (typeof globalThis !== 'undefined') {
-          (globalThis as any).__react__ = React;
-          (globalThis as any).__reactJsxRuntime__ = ReactJsxRuntime;
-        }
-
-        console.log('[LessonRenderer] Loading lesson:', lessonId);
-        console.log('[LessonRenderer] Globals set:', {
-          hasReact: !!(globalThis as any).__react__,
-          hasRuntime: !!(globalThis as any).__reactJsxRuntime__,
-        });
-
-        // Use our API proxy to bypass CORS and ensure proper headers
         const apiUrl = `/api/compiled-js/${lessonId}`;
-        console.log('[LessonRenderer] Fetching from API:', apiUrl);
-
-        // Dynamically import the compiled lesson module through our API
-        console.log('[LessonRenderer] Importing module...');
         const lessonModule = await import(/* webpackIgnore: true */ apiUrl);
         
-        console.log('[LessonRenderer] Module imported, checking for default export...');
-        console.log('[LessonRenderer] Module exports:', Object.keys(lessonModule));
-        
         if (!mounted) {
-          console.log('[LessonRenderer] Component unmounted, aborting render');
           return;
         }
 
@@ -64,30 +41,18 @@ export default function LessonRenderer({ lessonId, compiledJsPath }: LessonRende
           throw new Error(`Component is not a function: ${typeof Component}. Module exports: ${Object.keys(lessonModule).join(', ')}`);
         }
 
-        console.log('[LessonRenderer] Component valid, rendering...');
-        console.log('[LessonRenderer] Component:', Component.toString().substring(0, 200));
-
-        // Render the component into the container
         if (!containerRef.current) {
-          console.error('[LessonRenderer] Container ref is null!');
           throw new Error('Container element not found');
         }
-
-        console.log('[LessonRenderer] Container element:', containerRef.current);
         
-        // Clean up any existing root before creating a new one
         if (rootRef.current) {
-          console.log('[LessonRenderer] Unmounting existing root');
           rootRef.current.unmount();
-          rootRef.current = null;
         }
 
-        // Create new root for this render
-        currentRoot = createRoot(containerRef.current);
-        rootRef.current = currentRoot;
+        const newRoot = createRoot(containerRef.current);
+        rootRef.current = newRoot;
         
-        // Wrap component in error boundary for runtime errors
-        currentRoot.render(
+        newRoot.render(
           React.createElement(
             LessonErrorBoundary,
             {
@@ -102,8 +67,6 @@ export default function LessonRenderer({ lessonId, compiledJsPath }: LessonRende
             }
           )
         );
-        console.log('[LessonRenderer] Rendered successfully');
-        console.log('[LessonRenderer] Container HTML after render:', containerRef.current.innerHTML.substring(0, 200));
 
         if (mounted) {
           setLoading(false);
@@ -112,8 +75,14 @@ export default function LessonRenderer({ lessonId, compiledJsPath }: LessonRende
       } catch (err) {
         if (mounted) {
           const message = err instanceof Error ? err.message : String(err);
-          console.error('[LessonRenderer] Error:', message);
-          console.error('[LessonRenderer] Full error:', err);
+          
+          if (err instanceof Error) {
+            reportError(err, {
+              component: 'LessonRenderer',
+              lessonId,
+            });
+          }
+          
           setError(message);
           setLoading(false);
         }
@@ -122,14 +91,10 @@ export default function LessonRenderer({ lessonId, compiledJsPath }: LessonRende
 
     loadAndRenderLesson();
 
-    // Cleanup function: unmount root and mark as unmounted
     return () => {
       mounted = false;
-      if (currentRoot) {
-        console.log('[LessonRenderer] Cleaning up root on unmount/re-render');
-        currentRoot.unmount();
-      }
-      if (rootRef.current === currentRoot) {
+      if (rootRef.current) {
+        rootRef.current.unmount();
         rootRef.current = null;
       }
     };

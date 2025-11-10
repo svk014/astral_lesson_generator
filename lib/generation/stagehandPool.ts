@@ -79,6 +79,7 @@ class StagehandPool {
     }
 
     // Wait for instance to be available (simple poll for now)
+    console.log('[StagehandPool] No browsers available, waiting for one to be released...');
     return new Promise((resolve) => {
       const checkInterval = setInterval(() => {
         if (this.instances.length > 0) {
@@ -111,9 +112,28 @@ class StagehandPool {
   }
 
   release(browser: Stagehand): void {
+    if (!browser) {
+      console.error('[StagehandPool] Attempted to release null/undefined browser');
+      return;
+    }
+    
+    // Check if browser is already in use set
+    if (!this.inUse.has(browser)) {
+      console.warn('[StagehandPool] Attempted to release browser that is not marked as in-use');
+      return;
+    }
+    
     this.inUse.delete(browser);
     this.instances.push(browser);
     console.log(`[StagehandPool] Released browser (${this.inUse.size} in use, ${this.instances.length} available)`);
+  }
+
+  getDiagnostics(): { inUse: number; available: number; totalInstances: number } {
+    return {
+      inUse: this.inUse.size,
+      available: this.instances.length,
+      totalInstances: this.inUse.size + this.instances.length,
+    };
   }
 
   async closeAll(): Promise<void> {

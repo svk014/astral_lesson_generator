@@ -8,6 +8,7 @@ type LessonRecord = {
   jsx_public_url: string | null;
   jsx_source: string | null;
   compiled_code: string | null;
+  rendered_html: string | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -16,7 +17,7 @@ type LessonRecord = {
 
 export type LessonWithJsx = {
   lesson: LessonRecord;
-  compiledCode: string | null;
+  renderedHtml: string | null;
 };
 
 export async function loadLessonWithJsx(lessonId: string): Promise<LessonWithJsx | null> {
@@ -39,16 +40,11 @@ export async function loadLessonWithJsx(lessonId: string): Promise<LessonWithJsx
 
   const lesson = lessonData as LessonRecord;
 
-  // Try to use compiled_code from the database first
-  let compiledCode = lesson.compiled_code;
-
-  // Fallback to jsx_source if available (for backward compatibility)
-  if (!compiledCode && lesson.jsx_source) {
-    compiledCode = lesson.jsx_source;
-  }
+  // Use rendered_html from the database for server-side rendering
+  const renderedHtml = lesson.rendered_html;
 
   return {
     lesson,
-    compiledCode,
+    renderedHtml,
   };
 }

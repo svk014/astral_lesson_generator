@@ -14,6 +14,7 @@ import {
   generateAndStoreImages,
 } from '../generation/imageGeneration';
 import { compileJsxToJs } from '../generation/jsxCompiler';
+import { executeComponentCode } from '../generation/componentExecutor';
 
 export {
   refinePromptWithSystemMessage,
@@ -55,7 +56,13 @@ export async function getLessonById(lessonId: string) {
 
 export async function markLessonCompleted(
   lessonId: string,
-  payload?: { jsxPublicUrl: string; jsxStoragePath: string; jsxSource?: string; compiledCode?: string },
+  payload?: { 
+    jsxPublicUrl: string; 
+    jsxStoragePath: string; 
+    jsxSource?: string; 
+    compiledCode?: string;
+    renderedHtml?: string;
+  },
 ) {
   const { error } = await supabase
     .from('lessons')
@@ -65,6 +72,7 @@ export async function markLessonCompleted(
       jsx_storage_path: payload?.jsxStoragePath ?? null,
       jsx_source: payload?.jsxSource ?? null,
       compiled_code: payload?.compiledCode ?? null,
+      rendered_html: payload?.renderedHtml ?? null,
       error_message: null,
     })
     .eq('id', lessonId);
@@ -187,6 +195,35 @@ export async function compileAndStoreJSX(
   } catch (error) {
     throw new Error(
       `Failed to compile JSX: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/**
+ * Renders compiled JSX code to static HTML using server-side rendering
+ */
+export async function renderJSXToHtml(compiledCode: string): Promise<string> {
+  try {
+    const result = executeComponentCode(compiledCode);
+    
+    if (!result.success) {
+      throw new Error(`Component execution failed: ${result.error}`);
+    }
+
+    // Dynamically import react-dom/server to avoid server-only module issues
+    const reactDomServer = await import('react-dom/server');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const React = require('react') as typeof import('react');
+
+    // Render the component to static HTML
+    const renderedHtml = reactDomServer.renderToStaticMarkup(
+      React.createElement(result.component as React.ComponentType),
+    );
+    
+    return renderedHtml;
+  } catch (error) {
+    throw new Error(
+      `Failed to render JSX to HTML: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

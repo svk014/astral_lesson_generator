@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { HtmlLessonViewer } from "../lessons/[id]/HtmlLessonViewer";
+import { LessonErrorBoundary } from "../lessons/[id]/LessonErrorBoundary";
 import { loadTestLessonDirect } from "@/lib/test-lesson/loadTestLesson";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,9 @@ export default async function TestLessonPage() {
 
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Generated Content</h2>
-          <HtmlLessonViewer htmlContent={renderedHtml} />
+          <LessonErrorBoundary>
+            <HtmlLessonViewer htmlContent={renderedHtml} />
+          </LessonErrorBoundary>
         </section>
       </div>
     </main>

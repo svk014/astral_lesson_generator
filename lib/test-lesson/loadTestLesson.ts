@@ -1,48 +1,19 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { compileJsxToJs } from '@/lib/generation/jsxCompiler';
+import { executeComponentCode } from '@/lib/generation/componentExecutor';
 
 /**
  * Executes compiled JavaScript code in a server context and returns a React component
  */
 function executeCompiledCodeOnServer(compiledCode: string): unknown {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require('react') as unknown;
-  const exports: Record<string, unknown> = {};
-  const moduleLike = { exports } as { exports: Record<string, unknown> };
-
-  const customRequire = (id: string): unknown => {
-    if (id === "react" || id === "react/jsx-runtime") {
-      return React;
-    }
-    throw new Error(`Unsupported import: ${id}`);
-  };
-
-  // Execute the pre-compiled code in a server function scope
-  const fn = new Function("exports", "module", "require", "React", compiledCode);
-  fn(exports, moduleLike, customRequire, React);
-
-  let resolved: unknown =
-    (moduleLike.exports as Record<string, unknown>).default ??
-    (moduleLike.exports as Record<string, unknown>).Lesson ??
-    moduleLike.exports;
-
-  // If resolved is not a function, try to find any exported function
-  if (typeof resolved !== "function") {
-    for (const key in moduleLike.exports) {
-      const value = moduleLike.exports[key];
-      if (typeof value === "function") {
-        resolved = value;
-        break;
-      }
-    }
+  const result = executeComponentCode(compiledCode);
+  
+  if (!result.success) {
+    throw result.error;
   }
-
-  if (typeof resolved === "function") {
-    return resolved;
-  }
-
-  throw new Error("Generated code did not export a component");
+  
+  return result.component;
 }
 
 export type TestLessonResult = {

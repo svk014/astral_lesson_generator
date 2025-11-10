@@ -1,6 +1,7 @@
 "use client";
 
-import { LessonViewer } from "./LessonViewer";
+import { HtmlLessonViewer } from "./HtmlLessonViewer";
+import { LessonErrorBoundary } from "./LessonErrorBoundary";
 
 type LessonPageClientProps = {
   lesson: {
@@ -8,11 +9,11 @@ type LessonPageClientProps = {
     outline: string;
     status?: string;
   };
-  compiledCode: string | null;
+  renderedHtml: string | null;
 };
 
-export function LessonPageClient({ lesson, compiledCode }: LessonPageClientProps) {
-  const hasContent = Boolean(compiledCode);
+export function LessonPageClient({ lesson, renderedHtml }: LessonPageClientProps) {
+  const hasContent = Boolean(renderedHtml);
 
   return (
     <div className="relative flex min-h-screen w-full bg-background">
@@ -25,7 +26,9 @@ export function LessonPageClient({ lesson, compiledCode }: LessonPageClientProps
 
       <div className="flex-1 h-full w-full overflow-auto px-6 py-10">
         {hasContent ? (
-          <LessonViewer compiledCode={compiledCode ?? undefined} />
+          <LessonErrorBoundary>
+            <HtmlLessonViewer htmlContent={renderedHtml} />
+          </LessonErrorBoundary>
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             Generated lesson content is not available yet.

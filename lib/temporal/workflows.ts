@@ -7,7 +7,13 @@ type LessonActivities = {
   getLessonById(lessonId: string): Promise<Record<string, unknown>>;
   markLessonCompleted(
     lessonId: string,
-    payload?: { jsxPublicUrl: string; jsxStoragePath: string; jsxSource?: string; compiledCode?: string },
+    payload?: { 
+      jsxPublicUrl: string; 
+      jsxStoragePath: string; 
+      jsxSource?: string; 
+      compiledCode?: string;
+      renderedHtml?: string;
+    },
   ): Promise<void>;
   markLessonFailed(lessonId: string, failureReason: string): Promise<void>;
   markLessonQueued(lessonId: string): Promise<void>;
@@ -34,6 +40,7 @@ type LessonActivities = {
     lessonId: string,
     jsxSource: string,
   ): Promise<{ jsxSource: string; compiledCode: string }>;
+  renderJSXToHtml(compiledCode: string): Promise<string>;
   insertLessonGenerationLog(payload: {
     lessonId: string;
     workflowId: string;
@@ -120,11 +127,17 @@ export async function lessonGeneratorWorkflow(args: { lessonId: string; outline:
         await activities.markLessonStep(id, 'storing_jsx');
         const storage = await activities.storeJSXInSupabase(id, jsx);
         const compiled = await activities.compileAndStoreJSX(id, jsx);
+        
+        // Render the compiled code to static HTML
+        await activities.markLessonStep(id, 'rendering_html');
+        const renderedHtml = await activities.renderJSXToHtml(compiled.compiledCode);
+        
         await activities.markLessonCompleted(id, {
           jsxPublicUrl: storage.publicUrl,
           jsxStoragePath: storage.storagePath,
           jsxSource: compiled.jsxSource,
           compiledCode: compiled.compiledCode,
+          renderedHtml,
         });
         return storage;
       },

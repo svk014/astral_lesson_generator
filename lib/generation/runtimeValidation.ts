@@ -93,8 +93,17 @@ function compileJsxToComponent(jsx: string): React.ComponentType {
     throw new Error(`Unsupported import during runtime validation: ${id}`);
   };
 
-  const factory = new Function('exports', 'module', 'require', 'React', transpiled.outputText ?? '');
-  factory(moduleLike.exports, moduleLike, requireShim, React);
+  // Use 'eval' with proper scope to avoid 'window is not defined' errors
+  // This runs in Node.js context where globalThis and React are properly set up
+  try {
+    const factory = new Function('exports', 'module', 'require', 'React', 'globalThis', transpiled.outputText ?? '');
+    factory(moduleLike.exports, moduleLike, requireShim, React, globalThis);
+  } catch (error) {
+    console.error('[RuntimeValidation] Component execution error:', error);
+    throw new Error(
+      `Failed to execute component during validation: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 
   let resolved =
     (moduleLike.exports as Record<string, unknown>).default ??
@@ -365,20 +374,46 @@ export async function validateJSXRuntime(jsx: string): Promise<RuntimeValidation
     // Release browser back to pool instead of closing
     if (stagehand) {
       try {
-        // Clear any new pages created during tests
+        // Clear any new pages created during tests with timeout
         const pages = stagehand.context.pages();
-        for (const page of pages) {
-          try {
-            await page.close();
-          } catch {
-            // ignore
-          }
-        }
+        
+        // Use Promise.race with overall timeout to ensure we don't hang
+        await Promise.race([
+          Promise.all(
+            pages.map(async (page) => {
+              try {
+                // Use Promise.race with timeout to prevent hanging on individual pages
+                await Promise.race([
+                  page.close(),
+                  new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Page close timeout')), 5000),
+                  ),
+                ]);
+              } catch (err) {
+                // Silently ignore close errors - page will be cleaned by pool
+                console.debug('[Stagehand] Page close error (ignored):', err instanceof Error ? err.message : String(err));
+              }
+            }),
+          ),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Overall cleanup timeout')), 10000),
+          ),
+        ]);
+        
         // Release back to pool for reuse
         stagehandPool.release(stagehand);
         console.log('[Stagehand] Browser released back to pool');
       } catch (error) {
-        console.warn('[Stagehand] Error releasing browser:', error);
+        // Even if cleanup times out, log it and continue - don't block workflow
+        console.warn('[Stagehand] Cleanup timeout or error (will continue anyway):', error instanceof Error ? error.message : String(error));
+        
+        // Force release to pool anyway - it's better than hanging
+        try {
+          stagehandPool.release(stagehand);
+          console.log('[Stagehand] Browser force-released back to pool after cleanup timeout');
+        } catch (releaseErr) {
+          console.error('[Stagehand] Failed to release browser:', releaseErr);
+        }
       }
     }
   }

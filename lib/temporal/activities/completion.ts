@@ -13,7 +13,7 @@ export async function saveCompleteLesson(
   await markLessonCompleted(lessonId, {
     jsxPublicUrl: storage.publicUrl,
     jsxStoragePath: storage.storagePath,
-    compiledJsPath: compiled.storagePath,
+    compiledJsPath: compiled.publicUrl,
   });
 
   return storage;

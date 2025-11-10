@@ -56,7 +56,7 @@ export async function storeJSXInSupabase(
 export async function compileAndStoreJSX(
   lessonId: string,
   jsxSource: string,
-): Promise<{ storagePath: string }> {
+): Promise<{ storagePath: string; publicUrl: string }> {
   try {
     const compiledCode = compileJsxToJs(jsxSource);
     
@@ -72,7 +72,15 @@ export async function compileAndStoreJSX(
       throw new Error(`Failed to upload compiled JS: ${uploadError.message}`);
     }
 
-    return { storagePath: filePath };
+    const { data: publicUrlData } = supabase.storage
+      .from(env.supabase.storageBucket)
+      .getPublicUrl(filePath);
+
+    if (!publicUrlData.publicUrl) {
+      throw new Error('Failed to obtain public URL for compiled JS');
+    }
+
+    return { storagePath: filePath, publicUrl: publicUrlData.publicUrl };
   } catch (error) {
     throw new Error(
       `Failed to compile and store JSX: ${error instanceof Error ? error.message : String(error)}`,

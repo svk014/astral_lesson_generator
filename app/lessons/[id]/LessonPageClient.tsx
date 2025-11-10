@@ -27,7 +27,7 @@ export function LessonPageClient({ lesson, compiledJsPath }: LessonPageClientPro
       <div className="flex-1 h-full w-full overflow-auto px-6 py-10">
         {hasContent ? (
           <LessonErrorBoundary>
-            <LessonRenderer compiledJsPath={compiledJsPath} />
+            <LessonRenderer lessonId={lesson.id} compiledJsPath={compiledJsPath} />
           </LessonErrorBoundary>
         ) : (
           <div className="flex items-center justify-center h-full">

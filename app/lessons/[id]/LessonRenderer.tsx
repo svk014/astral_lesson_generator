@@ -5,12 +5,6 @@ import { createRoot } from 'react-dom/client';
 import * as ReactJsxRuntime from 'react/jsx-runtime';
 import { LessonErrorBoundary } from './LessonErrorBoundary';
 
-// Set React globals immediately for ES module imports
-if (typeof globalThis !== 'undefined') {
-  (globalThis as any).__react__ = React;
-  (globalThis as any).__reactJsxRuntime__ = ReactJsxRuntime;
-}
-
 interface LessonRendererProps {
   lessonId: string;
   compiledJsPath: string | null;
@@ -36,7 +30,18 @@ export default function LessonRenderer({ lessonId, compiledJsPath }: LessonRende
           throw new Error('No compiled JS path provided');
         }
 
+        // CRITICAL: Ensure globals are set BEFORE importing the module
+        // because the module code runs its destructuring at import time
+        if (typeof globalThis !== 'undefined') {
+          (globalThis as any).__react__ = React;
+          (globalThis as any).__reactJsxRuntime__ = ReactJsxRuntime;
+        }
+
         console.log('[LessonRenderer] Loading lesson:', lessonId);
+        console.log('[LessonRenderer] Globals set:', {
+          hasReact: !!(globalThis as any).__react__,
+          hasRuntime: !!(globalThis as any).__reactJsxRuntime__,
+        });
 
         // Use our API proxy to bypass CORS and ensure proper headers
         const apiUrl = `/api/compiled-js/${lessonId}`;
